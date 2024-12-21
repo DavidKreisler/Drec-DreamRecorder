@@ -72,7 +72,6 @@ class ZmaxHeadband():
             if str.startswith(line, 'DEBUG'):  # ignore debugging messages from server
                 continue
 
-
             if str.startswith(line, 'D'):  # only process data packets
                 p = line.split('.')
                 if len(p) == 2:
