@@ -9,6 +9,8 @@ import requests
 
 from scripts.Logic.RecorderThread import RecordThread
 from scripts.Utils.yasa_functions import YasaClassifier
+from scripts.Utils.Logger import Logger
+
 
 from scripts.Utils.EdfUtils import save_edf
 
@@ -47,6 +49,7 @@ class HBRecorderInterface:
         if self.isRecording:
             return
 
+        Logger().log('starting recording', 'DEBUG')
         self.recorderThread = RecordThread(signalType=self.signalType)
 
         if self.firstRecording:
@@ -67,15 +70,18 @@ class HBRecorderInterface:
         if not self.isRecording:
             return
 
+        Logger().log('stopping recording', 'DEBUG')
         self.recorderThread.stop()
         #self.recorderThread.quit()
         self.isRecording = False
         print('recording stopped')
 
     def on_recording_finished(self):
+        Logger().log('finished signal received')
         print('recording finished')
 
     def on_recording_finished_save_data(self, filePath):
+        Logger().log('starting to save data', 'DEBUG')
         self.recordingFinished = True
 
         # ensures directory exists
@@ -96,6 +102,8 @@ class HBRecorderInterface:
         if self.webhookActive:
             requests.post(self.webHookBaseAdress + 'finished')
 
+        Logger().log('finished saving data', 'DEBUG')
+
     def start_scoring(self):
         self.scoreSleep = True
         print('scoring started')
@@ -105,6 +113,7 @@ class HBRecorderInterface:
         print('scoring stopped')
 
     def get_epoch_data(self, data: list, epoch_counter: int):
+        Logger().log('getting epoch data', 'DEBUG')
         self.recording = np.concatenate((self.recording, data), axis=0)
         if self.scoreSleep and epoch_counter > self.scoring_delay:
             self._score_curr_data(epoch_counter)
@@ -154,15 +163,22 @@ class HBRecorderInterface:
         print('webhook stopped')
 
     def set_signaltype(self, types=None):
+        if self.isRecording:
+            Logger().log('Setting signaltype is not possible during a recording. Stop the recording first and then try again.', 'ERROR')
+            return
         if types is None:
-            types = []
+            Logger().log('Types need to be specified to set the signaltype.', 'ERROR')
+            return
         self.signalType = types
         self.recording = np.empty(shape=(0, len(self.signalType)))
 
     def set_scoring_delay(self, delay_in_epochs: int):
+        delay_in_epochs = max(delay_in_epochs, 10)
         self.scoring_delay = delay_in_epochs
 
     def quit(self):
+        Logger().log('Quit called', 'DEBUG')
+
         if self.recorderThread:
             self.stop_recording()
 

@@ -1,3 +1,4 @@
+import datetime
 import threading
 import time
 
@@ -5,6 +6,7 @@ from scapy.all import sniff, IP, TCP
 from queue import Queue
 
 from scripts.Connection.TcpConnection import Connection
+from scripts.Utils.Logger import Logger
 
 
 class TcpSniffSocket:
@@ -15,6 +17,7 @@ class TcpSniffSocket:
         self.stop_sniffing = True
 
     def connect(self):
+        Logger().log('starting TcpSniffSocket')
         self.sniffer_thread = threading.Thread(target=self._start_sniffer)
         self.sniffer_thread.daemon = True
         self.sniffer_thread.start()
@@ -28,8 +31,11 @@ class TcpSniffSocket:
     def read_one_line(self):
         if self.stop_sniffing:
             return ''
-
+        start_time = datetime.datetime.now()
         while self.data_queue.empty():
+            if datetime.datetime.now()-start_time > datetime.timedelta(seconds=5):
+                Logger().log('no data available at queue. returning nothing', 'debug')
+                return ''
             time.sleep(0.1)
         return self.data_queue.get().decode("utf-8")
 
@@ -92,6 +98,7 @@ class TcpSniffSocket:
                     del self.connections[active_conn]
 
     def stop(self):
+        Logger().log('stopping TcpSniffSocket')
         self.stop_sniffing = True
 
 
