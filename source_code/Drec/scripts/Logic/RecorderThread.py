@@ -4,6 +4,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 
 from scripts.Connection.ZmaxHeadband import ZmaxDataID, ZmaxHeadband
+from scripts.Utils.Logger import Logger
 
 
 class RecordThread(QThread):
@@ -26,9 +27,11 @@ class RecordThread(QThread):
         self.sample_rate = 256
 
     def sendEpochData(self, data):
+        Logger().log('sending epoch data', 'INFO')
         self.sendEpochDataSignal.emit(data, self.epochCounter)
 
     def run(self):
+        Logger().log('starting the recorder thread', 'DEBUG')
         recording = []
         cols = self.signalType
         cols.extend([998, 999])  # add two columns for sample number, sample time
@@ -58,7 +61,8 @@ class RecordThread(QThread):
                 try:
                     x = hb.read(cols[:-2])
                 except Exception as e:
-                    print(f'[ERROR] at ZMaxHeadband.read(): {e}')
+                    #print(f'[ERROR] at ZMaxHeadband.read(): {e}')
+                    Logger().log(e, 'ERROR')
                     x = []
                 if x:
                     for line in x:
@@ -76,6 +80,7 @@ class RecordThread(QThread):
                                     self.epochCounter += 1
 
                 else:
+                    Logger().log('No data at hb.read()', 'INFO')
                     continue
 
             if buffer2analyzeIsReady:
@@ -87,7 +92,9 @@ class RecordThread(QThread):
                 buffer2analyzeIsReady = False
 
             if self.threadactive is False:
+                Logger().log('stopping headband', 'debug')
                 hb.stop()
+                Logger().log('stepping out of recorder thread loop', 'debug')
                 break
 
         actual_end_time = time.time()
@@ -100,5 +107,6 @@ class RecordThread(QThread):
         self.recordingFinishedSignal.emit(f"{file_path}")  # send path of recorded file to mainWindow
 
     def stop(self):
+        Logger().log('stopping recorder Thread', 'DEBUG')
         self.threadactive = False
 

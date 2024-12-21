@@ -1,6 +1,8 @@
 import cmd
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 
+from scripts.Utils.Logger import Logger
+
 
 class CLIThread(QThread):
     def __init__(self):
@@ -47,12 +49,14 @@ class SleepRecorderCLI(cmd.Cmd, QObject):
     def do_start(self, line):
         """start the recoring, scoring and the webhook. If the webhook startup fails, the recording and scoring are
         still started."""
+        Logger().log('start signal emitted', 'DEBUG')
         self.start_signal.emit(True)
         self.start_scoring_signal.emit(True)
         self.start_webhook_signal.emit(True)
 
     def do_stop(self, line):
         """stops recording, scoring and webhook"""
+        Logger().log('stop signal emitted', 'DEBUG')
         self.stop_signal.emit(True)
 
     def do_start_recording(self, line):
@@ -81,7 +85,6 @@ class SleepRecorderCLI(cmd.Cmd, QObject):
         try:
             numbers = [int(n) for n in numbers]
             self.set_signaltype_signal.emit(numbers)
-            print('the recording has to be restarted for this change to have an effect!')
         except Exception:
             print('pass signals as integers according to "show_possible_signals", e.g. " set_signaltype 1,2,3"')
 
@@ -94,6 +97,7 @@ class SleepRecorderCLI(cmd.Cmd, QObject):
         """set the number of epochs to wait before scoring is started. Epoch length si 30 seconds. Min value is 10 (5 min)"""
         try:
             val = int(line)
+            self.set_scoring_delay_signal.emit(val)
         except ValueError:
             print(f'please provide a numer. "{line}" was not interpretable as integer.')
 

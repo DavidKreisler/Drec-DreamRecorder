@@ -4,6 +4,7 @@ import numpy as np
 import enum
 
 from scripts.Connection.TcpSniffSocket import TcpSniffSocket
+from scripts.Utils.Logger import Logger
 
 
 class ZmaxDataID(enum.Enum):
@@ -58,56 +59,66 @@ class ZmaxHeadband():
             reqIDs = [0, 1]
 
         reqVals = []
-        buf = self.sock.read_one_line()
-        for line in buf.split('\n'):
-            if str.startswith(line, 'DEBUG'):  # ignore debugging messages from server
-                pass
-            else:
-                if str.startswith(line, 'D'):  # only process data packets
-                    p = line.split('.')
+        try:
+            buf = self.sock.read_one_line()
+        except Exception as e:
+            Logger().log(f'exception at TcpSniffSocket.read_one_line: {e}')
+            buf = ''
 
-                    if len(p) == 2:
-                        line = p[1]
-                        packet_type = self.getbyteat(line, 0)
-                        if (packet_type >= 1) and (packet_type <= 11):  # packet type within correct range
-                            if len(line) == 120: #119
-                                # EEG channels
-                                eegr = self.getwordat(line, 1)
-                                eegl = self.getwordat(line, 3)
-                                # Accelerometer channels
-                                dx = self.getwordat(line, 5)
-                                dy = self.getwordat(line, 7)
-                                dz = self.getwordat(line, 9)
-                                # PPG channels (not plotted)
-                                oxy_ir_ac = self.getwordat(line, 27)  # requires external nasal sensor
-                                oxy_r_ac = self.getwordat(line, 25)  # requires external nasal sensor
-                                oxy_dark_ac = self.getwordat(line, 34)  # requires external nasal sensor
-                                oxy_ir_dc = self.getwordat(line, 17)  # requires external nasal sensor
-                                oxy_r_dc = self.getwordat(line, 15)  # requires external nasal sensor
-                                oxy_dark_dc = self.getwordat(line, 32)  # requires external nasal sensor
-                                # other channels (not plotted)
-                                bodytemp = self.getwordat(line, 36)
-                                nasal_l = self.getwordat(line, 11)  # requires external nasal sensor
-                                nasal_r = self.getwordat(line, 13)  # requires external nasal sensor
-                                light = self.getwordat(line, 21)
-                                bat = self.getwordat(line, 23)
-                                noise = self.getwordat(line, 19)
-                                # convert
-                                eegr, eegl = self.ScaleEEG(eegr), self.ScaleEEG(eegl)
-                                dx, dy, dz = self.ScaleAccel(dx), self.ScaleAccel(dy), self.ScaleAccel(dz)
-                                bodytemp = self.BodyTemp(bodytemp)
-                                bat = self.BatteryVoltage(bat)
-                                # for function return
-                                result = [eegr, eegl, dx, dy, dz, bodytemp, bat, noise, light, nasal_l, nasal_r,
-                                          oxy_ir_ac, oxy_r_ac, oxy_dark_ac, oxy_ir_dc, oxy_r_dc, oxy_dark_dc]
-                                vals = []
-                                for i in reqIDs:
-                                    vals.append(result[i])
-                                reqVals.append(vals)
+        for line in buf.split('\n'):
+            if len(line) <= 0:
+                continue
+
+            if str.startswith(line, 'DEBUG'):  # ignore debugging messages from server
+                continue
+
+            if str.startswith(line, 'D'):  # only process data packets
+                p = line.split('.')
+                if len(p) == 2:
+                    line = p[1]
+                    packet_type = self.getbyteat(line, 0)
+                    if (packet_type >= 1) and (packet_type <= 11):  # packet type within correct range
+                        if len(line) == 120: #119
+                            # EEG channels
+                            eegr = self.getwordat(line, 1)
+                            eegl = self.getwordat(line, 3)
+                            # Accelerometer channels
+                            dx = self.getwordat(line, 5)
+                            dy = self.getwordat(line, 7)
+                            dz = self.getwordat(line, 9)
+                            # PPG channels (not plotted)
+                            oxy_ir_ac = self.getwordat(line, 27)  # requires external nasal sensor
+                            oxy_r_ac = self.getwordat(line, 25)  # requires external nasal sensor
+                            oxy_dark_ac = self.getwordat(line, 34)  # requires external nasal sensor
+                            oxy_ir_dc = self.getwordat(line, 17)  # requires external nasal sensor
+                            oxy_r_dc = self.getwordat(line, 15)  # requires external nasal sensor
+                            oxy_dark_dc = self.getwordat(line, 32)  # requires external nasal sensor
+                            # other channels (not plotted)
+                            bodytemp = self.getwordat(line, 36)
+                            nasal_l = self.getwordat(line, 11)  # requires external nasal sensor
+                            nasal_r = self.getwordat(line, 13)  # requires external nasal sensor
+                            light = self.getwordat(line, 21)
+                            bat = self.getwordat(line, 23)
+                            noise = self.getwordat(line, 19)
+                            # convert
+                            eegr, eegl = self.ScaleEEG(eegr), self.ScaleEEG(eegl)
+                            dx, dy, dz = self.ScaleAccel(dx), self.ScaleAccel(dy), self.ScaleAccel(dz)
+                            bodytemp = self.BodyTemp(bodytemp)
+                            bat = self.BatteryVoltage(bat)
+                            # for function return
+                            result = [eegr, eegl, dx, dy, dz, bodytemp, bat, noise, light, nasal_l, nasal_r,
+                                      oxy_ir_ac, oxy_r_ac, oxy_dark_ac, oxy_ir_dc, oxy_r_dc, oxy_dark_dc]
+                            vals = []
+                            for i in reqIDs:
+                                vals.append(result[i])
+                            reqVals.append(vals)
+            else:
+                Logger().log(f'data in unexpected format received: {line}', 'DEBUG')
 
         return reqVals
 
     def stop(self):
+        Logger().log('stopping socket in Headband', 'debug')
         self.sock.stop()
 
     def __del__(self):
