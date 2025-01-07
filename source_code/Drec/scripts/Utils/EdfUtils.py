@@ -39,3 +39,6 @@ def save_edf(signals: np.ndarray, channels: list, path: str, file_name: str, sam
     except Exception as e:
         print(f'[ERROR] when writing edf: {e}')
 
+
+def save_as_txt(signals: np.ndarray, path: str, file_name: str):
+    np.savetxt(os.path.join(path, file_name), signals, delimiter=',')  # save recording as txt
