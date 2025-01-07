@@ -19,8 +19,8 @@ class YasaClassifier:
 
     @staticmethod
     def get_raw_eeg_from_edf(filepath: str) -> mne.io.Raw:
-        raw = mne.io.read_raw_edf(filepath, preload=True, verbose=False)
-        raw.filter(0.1, 40)
+        raw = mne.io.read_raw_edf(filepath, preload=True, verbose='error')
+        raw.filter(0.1, 40, verbose='error')
         return raw
 
     @staticmethod
@@ -63,7 +63,7 @@ class YasaClassifier:
     @staticmethod
     def get_bandpower_per_epoch(mne_array, window_size: int = 5, sf: int = 256, epoch_len: int = 30):
         # get epochs
-        _, epochs = yasa.sliding_window(mne_array.copy().get_epoch_data(units='V'), sf, window=epoch_len)
+        _, epochs = yasa.sliding_window(mne_array.copy().get_data(units='V'), sf, window=epoch_len)
 
         # calculate psd
         win = int(window_size * sf)
@@ -86,7 +86,7 @@ class YasaClassifier:
         data = mne_array.copy().pick(channels)
         preds_per_sample = yasa.hypno_str_to_int(predictions)
         preds_per_sample = yasa.hypno_upsample_to_data(hypno=preds_per_sample, sf_hypno=(1 / epoch_len_sec),
-                                                       data=data.get_epoch_data(), sf_data=sf)
+                                                       data=data.get_data(), sf_data=sf)
         return preds_per_sample
 
     @staticmethod
@@ -95,7 +95,7 @@ class YasaClassifier:
         hypno = None
         if predictions is not None and 'R' in predictions:
             hypno = YasaClassifier.get_preds_per_sample(predictions, data, channels)
-        loc, roc = data.get_epoch_data(units='uV')
+        loc, roc = data.get_data(units='uV')
         rem = yasa.rem_detect(loc, roc, sf, hypno=hypno, include=4, amplitude=(50, 325),
                               duration=(0.3, 1.2),
                               relative_prominence=0.8, freq_rem=(0.5, 5), remove_outliers=False, verbose='error')
@@ -106,6 +106,32 @@ class YasaClassifier:
     def get_epoch_by_epoch_agreement(targets: list, preds: list):
         agr = yasa.EpochByEpochAgreement(targets, preds)
         return agr
+
+
+def iterate_rec_epoch_wise(raw: mne.io.Raw, channel_l: str, channel_r: str):
+    recording = np.empty((0, len(raw.ch_names)))
+    epoch = []
+    signal = raw.copy()
+    signal.pick([channel_l, channel_r])
+    ch_l, ch_r = signal.get_data()
+
+    # simulate a signal that is received from second 0
+    sf = 256
+    epoch_len_in_sec = 30
+
+    for idx in range(0, len(ch_l)):
+        # the signal arrives
+        loc = ch_l[idx]
+        roc = ch_r[idx]
+
+        data_entry = [loc, roc]
+        epoch.append(data_entry)
+
+        if idx % (sf * epoch_len_in_sec) == 0:
+            recording = np.concatenate((recording, epoch), axis=0)
+            epoch = []
+
+    return recording
 
 
 def simulate_scoring_in_live(raw: mne.io.Raw, channel_l: str, channel_r: str, male: bool = True, age: int = 45):
@@ -131,7 +157,7 @@ def simulate_scoring_in_live(raw: mne.io.Raw, channel_l: str, channel_r: str, ma
     global eeg_bands
     signal = raw.copy()
     signal.pick([channel_l, channel_r])
-    ch_l, ch_r = signal.get_epoch_data()
+    ch_l, ch_r = signal.get_data()
 
     # simulate a signal that is received from second 0
     sf = 256

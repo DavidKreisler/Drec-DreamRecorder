@@ -16,20 +16,20 @@ def save_edf(signals: np.ndarray, channels: list, path: str, file_name: str, sam
     :param sample_rate:
     :return:
     """
-    min_eeg_val = -1000000
-    max_eeg_val = 1000000
+    min_eeg_val = -256**2 - 1
+    max_eeg_val = 256**2 - 1
     if len(signals) <= 1:
         return
 
     # write an edf file
     signals_reformatted = signals.T
-    signals_reformatted = np.clip(signals_reformatted, min_eeg_val, max_eeg_val)
+    #signals_reformatted = np.clip(signals_reformatted, min_eeg_val, max_eeg_val)
     signals_reformatted = np.ascontiguousarray(signals_reformatted)
     channel_names = [str(ZmaxDataID(channel)) for channel in channels]
     signal_headers = highlevel.make_signal_headers(channel_names,
                                                    sample_frequency=sample_rate,
-                                                   physical_min=-1000000,
-                                                   physical_max=1000000)
+                                                   physical_min=-256**2,
+                                                   physical_max=256**2)
     header = highlevel.make_header(patientname='patient')
     try:
         highlevel.write_edf(os.path.join(path, file_name),
