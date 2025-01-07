@@ -14,6 +14,8 @@ from scripts.Utils.Logger import Logger
 
 from scripts.Utils.EdfUtils import save_edf
 
+from source_code.Drec.scripts.Utils.EdfUtils import save_as_txt
+
 
 class HBRecorderInterface:
     def __init__(self):
@@ -92,6 +94,8 @@ class HBRecorderInterface:
                  self.signalType,
                  filePath,
                  'recording.edf')
+
+        save_as_txt(self.recording, filePath, 'recording.txt')
 
         # save the predictions
         if self.scoring_predictions:
