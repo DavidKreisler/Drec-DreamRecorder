@@ -14,7 +14,7 @@ from scripts.Utils.Logger import Logger
 
 from scripts.Utils.EdfUtils import save_edf
 
-from source_code.Drec.scripts.Utils.EdfUtils import save_as_txt
+from scripts.Utils.EdfUtils import save_as_txt
 
 
 class HBRecorderInterface:
