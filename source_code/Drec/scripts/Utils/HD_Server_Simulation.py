@@ -4,7 +4,7 @@ import time
 import mne
 import numpy as np
 
-from source_code.Drec.scripts.Utils.Int_Hex_conversion import numberToWord, descaleEEG
+from scripts.Utils.Int_Hex_conversion import numberToWord, descaleEEG
 
 
 class HD_Server_Sim:
