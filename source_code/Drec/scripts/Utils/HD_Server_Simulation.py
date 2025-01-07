@@ -4,6 +4,8 @@ import time
 import mne
 import numpy as np
 
+from source_code.Drec.scripts.Utils.Int_Hex_conversion import numberToWord, descaleEEG
+
 
 class HD_Server_Sim:
     def __init__(self):
@@ -46,10 +48,13 @@ class HD_Server_Sim:
                 end = self.current_sample + chunk_size
 
                 if end > n_samples:
+                    print(f'[INFO] End of file reached. stopping stream.')
                     self.streaming = False
                 else:
                     chunk = self.eeg_data[:, start:end]
                     self.current_sample = end
+                    if self.current_sample % (n_samples / 10) == 0:
+                        print(f'{(self.current_sample / n_samples) * 100}% done')
 
                 # convert the chunks into a message
                 accumulated_message = ''
@@ -66,7 +71,7 @@ class HD_Server_Sim:
 
             else:
                 # print("[INFO] Waiting for clients...")
-                pass
+                time.sleep(1)
 
             time.sleep(interval)  # Wait for 1 second before sending the next chunk
 
@@ -124,6 +129,13 @@ class HD_Server_Sim:
         data1 = raw1.get_data()
         data2 = raw2.get_data()
 
+        physical_min = -1975  # np.ceil(max(min(min(signals_reformatted[0]), min(signals_reformatted[1])), -10000))
+        physical_max = 1975  # np.floor(min(max(max(signals_reformatted[0]), max(signals_reformatted[1])), 10000))
+
+        # transform the signal
+        data1 = np.clip(data1, physical_min, physical_max)
+        data2 = np.clip(data2, physical_min, physical_max)
+
         # Check if sampling rates match
         assert raw1.info['sfreq'] == raw2.info['sfreq'], "Sampling rates must match!"
         assert raw1.times.shape == raw2.times.shape, "Time bases must align!"
@@ -155,7 +167,7 @@ class HD_Server_Sim:
             raw_eegr = mne.io.read_raw_edf(edf_file_path_R, preload=True)
 
             eeg = self.combine_raw_instances(raw_eegl, raw_eegr)
-            self.eeg_data = eeg.get_data(picks='eeg')
+            self.eeg_data = eeg.get_data(picks='eeg', units='uV')
 
             print(f"[EDF LOADED] Loaded EEG data with shape {self.eeg_data.shape}")
 
@@ -167,11 +179,11 @@ class HD_Server_Sim:
     # signal transformation methods
     # ----------------------------------------
     def signal_to_hex(self, sigl, sigr):
-        descaled_sigl = self.descaleEEG(sigl)
-        descaled_sigr = self.descaleEEG(sigr)
+        descaled_sigl = descaleEEG(sigl)
+        descaled_sigr = descaleEEG(sigr)
         buf = f"D.06-"\
-              f"{self.numberToWord(descaled_sigl)}-"\
-              f"{self.numberToWord(descaled_sigr)}-"\
+              f"{numberToWord(descaled_sigl)}-"\
+              f"{numberToWord(descaled_sigr)}-"\
               f"00-00-00-00-" \
               f"00-00-00-00-" \
               f"00-00-00-00-" \
@@ -183,19 +195,6 @@ class HD_Server_Sim:
               f"00-00-00" \
 
         return buf
-
-    def numberToWord(self, n):
-        if n <= 256:
-            return f'00-{self.dec2hex(n, pad=2)}'
-        message = f'{self.dec2hex(int(n / 256), pad=2)}-{self.dec2hex(int(n % 256), pad=2)}'
-        return message
-
-    def descaleEEG(self, sig):  # uV to word value
-        uvRange = 3952
-        d = sig * 65536
-        d = d / uvRange
-        d = d + 32768
-        return d
 
     def descaleAccel(self, sig):
         d = (sig + 2) * 4096 / 4
@@ -228,7 +227,7 @@ if __name__ == "__main__":
 
     server = HD_Server_Sim()
     #server.message_to_hex(1295, 1022)
-    server.load_edf()
+    server.load_edf('C:/coding/git/dreamento/dreamento-online/source_code/Drec/recordings/2024 12 23 - 22 20 45/2024 12 23 - 22 20 45/')
 
     # Start the server
     server.start_server()
