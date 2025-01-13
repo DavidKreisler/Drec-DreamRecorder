@@ -12,7 +12,6 @@ from scripts.Logic.RecorderThread import RecordThread
 from scripts.Utils.yasa_functions import YasaClassifier
 from scripts.Utils.Logger import Logger
 
-
 from scripts.Utils.EdfUtils import save_edf, save_as_txt
 
 
