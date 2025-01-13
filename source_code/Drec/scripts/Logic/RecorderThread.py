@@ -27,7 +27,7 @@ class RecordThread(QThread):
         self.sample_rate = 256
 
     def sendEpochData(self, data):
-        Logger().log('sending epoch data', 'INFO')
+        Logger().log('sending epoch data', 'debug')
         self.sendEpochDataSignal.emit(data, self.epochCounter)
 
     def run(self):

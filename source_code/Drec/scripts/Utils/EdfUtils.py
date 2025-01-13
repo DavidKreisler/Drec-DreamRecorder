@@ -6,7 +6,7 @@ from pyedflib import highlevel
 from scripts.Connection.ZmaxHeadband import ZmaxDataID
 
 
-def save_edf(signals: np.ndarray, channels: list, path: str, file_name: str, sample_rate:int = 256):
+def save_edf(signals: np.ndarray, channels: list, path: str, file_name: str, signal_scaling_factor: int = 1, sample_rate:int = 256):
     """
 
     :param signals: a np.ndarray where each row represents one single sample
@@ -16,21 +16,34 @@ def save_edf(signals: np.ndarray, channels: list, path: str, file_name: str, sam
     :param sample_rate:
     :return:
     """
-    min_eeg_val = -1000000
-    max_eeg_val = 1000000
+
     if len(signals) <= 1:
         return
 
-    # write an edf file
-    signals_reformatted = signals.T
-    signals_reformatted = np.clip(signals_reformatted, min_eeg_val, max_eeg_val)
+    # reformat the signal
+    signals_reformatted = signals.T * signal_scaling_factor
+
+    # define mins and max
+    digital_min = -(256 ** 2) / 2
+    digital_max = (256 ** 2) / 2 - 1
+    physical_min = -1976  # np.ceil(max(min(min(signals_reformatted[0]), min(signals_reformatted[1])), -10000))
+    physical_max = 1976  # np.floor(min(max(max(signals_reformatted[0]), max(signals_reformatted[1])), 10000))
+
+    # transform the signal
+    signals_reformatted = np.clip(signals_reformatted, physical_min, physical_max)
     signals_reformatted = np.ascontiguousarray(signals_reformatted)
+
     channel_names = [str(ZmaxDataID(channel)) for channel in channels]
     signal_headers = highlevel.make_signal_headers(channel_names,
                                                    sample_frequency=sample_rate,
-                                                   physical_min=-1000000,
-                                                   physical_max=1000000)
+
+                                                   physical_min=physical_min,
+                                                   physical_max=physical_max,
+                                                   digital_min=digital_min,
+                                                   digital_max=digital_max,
+                                                   dimension='uV')
     header = highlevel.make_header(patientname='patient')
+
     try:
         highlevel.write_edf(os.path.join(path, file_name),
                             signals_reformatted,
