@@ -4,18 +4,20 @@ import pandas as pd
 import yasa
 from scipy.signal import welch
 import warnings
+import itertools
+from tqdm import tqdm
+
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score, accuracy_score
+
+from scripts.Utils.Logger import Logger
 
 warnings.filterwarnings('ignore', message='Trying to unpickle estimator LabelEncoder from version 0.24.2 when *')
 
 class YasaClassifier:
-
-    eeg_bands = [(0.5, 4, 'Delta'),
-                 (4, 6, 'Theta_low'),
-                 (6, 8, 'Theta_high'),
-                 (8, 11, 'Alpha'),
-                 (16, 24, 'Beta'),
-                 (12, 15, 'Sigma'),
-                 (10, 12, 'Sigma_slow')]
 
     @staticmethod
     def get_raw_eeg_from_edf(filepath: str) -> mne.io.Raw:
@@ -63,7 +65,8 @@ class YasaClassifier:
     @staticmethod
     def get_bandpower_per_epoch(mne_array, window_size: int = 5, sf: int = 256, epoch_len: int = 30):
         # get epochs
-        _, epochs = yasa.sliding_window(mne_array.copy().get_data(units='V'), sf, window=epoch_len)
+        data = mne_array.copy().get_data()
+        _, epochs = yasa.sliding_window(data, sf, window=epoch_len)
 
         # calculate psd
         win = int(window_size * sf)
@@ -94,193 +97,238 @@ class YasaClassifier:
         data = mne_array.copy().pick(channels)
         hypno = None
         if predictions is not None and 'R' in predictions:
-            hypno = YasaClassifier.get_preds_per_sample(predictions, data, channels)
-        loc, roc = data.get_data(units='uV')
+            hypno = YasaClassifier.get_preds_per_sample(mne_array=data, predictions=predictions, channels=channels)
+        loc, roc = data.get_data()
         rem = yasa.rem_detect(loc, roc, sf, hypno=hypno, include=4, amplitude=(50, 325),
                               duration=(0.3, 1.2),
-                              relative_prominence=0.8, freq_rem=(0.5, 5), remove_outliers=False, verbose='error')
-
+                              relative_prominence=0.8, freq_rem=(0.5, 5), remove_outliers=False, verbose='Error')
         return rem
+
+    @staticmethod
+    def get_scoring_metrics(mne_array, sample_rate: int = 256, channels=None):
+        """
+        param: mne_array
+        param: sample_rate
+        param: channels
+
+        returns: a pd.DataFrame with the bandpowers as columns, aswell as a flag to specify if epoch is rem (by
+                sleep staging and eyes
+        """
+        if channels is None:
+            channels = ['eegr', 'eegl']
+
+        # get sleep stages
+        sleep_stage_predictions = YasaClassifier.get_preds_per_epoch(mne_array=mne_array)
+        sleep_stage_rem = [1 if sleep_stage_predictions[i] == 'R' else 0 for i in
+                           range(0, len(sleep_stage_predictions))]
+
+        # get bandpower
+        bandpower, _ = YasaClassifier.get_bandpower_per_epoch(mne_array)  # bandpwr has shape [band, epoch, channel]
+        bandpower = bandpower.mean(axis=2).T  # now has the shape [epoch, band], so each 'row' is an epoch
+
+        # get rem by eyes
+        eyes = YasaClassifier.get_eyes(mne_array, channels, sleep_stage_predictions)
+
+        # binarize results by eyes
+        eyes_bin = list(np.zeros(len(sleep_stage_rem)))
+        if eyes:  # eyes may be None if no rem events were found
+            eyes_mask = eyes.get_mask()  # mask containing
+            for bin_idx, sample_idx in enumerate(range(0, len(eyes_mask[0, 0:len(eyes_mask[0])]), 30 * sample_rate)):
+                min_val = min([1, sum(eyes_mask[0][sample_idx:sample_idx+30*sample_rate])])
+                eyes_bin[bin_idx] = min_val
+
+        # combine into one df
+        data = pd.DataFrame(bandpower, columns=['delta', 'theta', 'alpha', 'sigma', 'beta', 'gamma'])
+        data['is_rem'] = [int(sum([sleep_stage_rem[i], eyes_bin[i]]) / 2) for i in range(0, len(sleep_stage_rem))]
+
+        return data
 
     @staticmethod
     def get_epoch_by_epoch_agreement(targets: list, preds: list):
         agr = yasa.EpochByEpochAgreement(targets, preds)
         return agr
 
+    @staticmethod
+    def get_theta_delta_threshold(data: pd.DataFrame, column_name: str, n_clusters: int = 3):
+        """
+        data: pd.DataFrame that contains only the theta/delta ratio per epoch. SideEffect: data gets an additional
+        column: cluster column_name: the name of the column within the dataframe that contains the theta/delta ratio
+        """
+        d = pd.DataFrame(data[column_name])
+        scaler = StandardScaler()
+        features = scaler.fit_transform(d)
 
-def iterate_rec_epoch_wise(raw: mne.io.Raw, channel_l: str, channel_r: str):
-    recording = np.empty((0, len(raw.ch_names)))
-    epoch = []
-    signal = raw.copy()
-    signal.pick([channel_l, channel_r])
-    ch_l, ch_r = signal.get_data()
+        kmeans = KMeans(n_clusters=n_clusters)
+        data['cluster'] = kmeans.fit_predict(features)
+        centers = kmeans.cluster_centers_
 
-    # simulate a signal that is received from second 0
-    sf = 256
-    epoch_len_in_sec = 30
+        original_centers = scaler.inverse_transform(centers).flatten()
+        original_centers.sort()
+        optimum_thresh = (original_centers[-1] - original_centers[-2]) / 2
 
-    for idx in range(0, len(ch_l)):
-        # the signal arrives
-        loc = ch_l[idx]
-        roc = ch_r[idx]
+        return optimum_thresh, original_centers
 
-        data_entry = [loc, roc]
-        epoch.append(data_entry)
+    @staticmethod
+    def find_optimal_rem_scoring_metrics(data: pd.DataFrame, rem_flag='is_rem', test_size=0.2, random_state=42):
+        """
+        Finds the optimal power bands and ratios to distinguish between REM and non-REM epochs
+        and determines the optimal threshold for the best feature.
 
-        if idx % (sf * epoch_len_in_sec) == 0:
-            recording = np.concatenate((recording, epoch), axis=0)
-            epoch = []
+        Parameters:
+        - data: pd.DataFrame
+            A DataFrame containing power bands as columns and a REM flag column.
+        - rem_flag: str
+            The name of the column indicating REM (1) vs non-REM (0).
+        - test_size: float
+            Proportion of the dataset to include in the test split.
+        - random_state: int
+            Random seed for reproducibility.
 
-    return recording
+        Returns:
+        - dict
+            A dictionary containing the best feature, its metrics, optimal threshold, and scores for all features.
+        """
+        # Separate features and target
+        target = data[rem_flag]
+        if len(target.unique()) == 1:
+            Logger().log(f'only negative samples present when finding best scoring metrics. aborting.', 'debug')
+            return None
+        features = data.drop(columns=[rem_flag])
+        band_names = features.columns
+
+        # Generate all possible band ratios
+        ratios = []
+        for band1, band2 in itertools.combinations(band_names, 2):
+            ratio_name = f"{band1}/{band2}"
+            features[ratio_name] = features[band1] / features[band2]
+            ratios.append(ratio_name)
+
+        # Train-test split
+        X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=test_size,
+                                                            random_state=random_state)
+        if len(y_train.unique()) <= 1 or len(y_test.unique()) <= 1:
+            Logger().log(f'not enough positive samples for train_test_split! aborting', 'debug')
+            return None
+
+        # Evaluate each feature
+        feature_scores = {}
+        for feature in features.columns:
+            # Train logistic regression using one feature
+            model = LogisticRegression()
+            model.fit(X_train[[feature]], y_train)
+            y_pred_proba = model.predict_proba(X_test[[feature]])[:, 1]
+
+            # Compute metrics
+            auc = roc_auc_score(y_test, y_pred_proba)
+            thresholds = np.linspace(0, 1, 101)  # Test thresholds from 0 to 1
+            best_threshold, best_metric = None, 0
+
+            # Evaluate thresholds
+            for threshold in thresholds:
+                y_pred = (y_pred_proba >= threshold).astype(int)
+                acc = accuracy_score(y_test, y_pred)  # You can replace this with other metrics
+                if acc > best_metric:  # Replace `acc` with your chosen metric
+                    best_metric = acc
+                    best_threshold = threshold
+
+            feature_scores[feature] = {
+                'AUC': auc,
+                'Best Threshold': best_threshold,
+                'Best Accuracy': best_metric
+            }
+        # Find the best feature
+        best_feature = max(feature_scores, key=lambda x: feature_scores[x]['AUC'])
+        best_metrics = feature_scores[best_feature]
+
+        # Return results
+        return {
+            'Best Feature': best_feature,
+            'Best Metrics': best_metrics,
+            'All Feature Scores': feature_scores
+        }
 
 
-def simulate_scoring_in_live(raw: mne.io.Raw, channel_l: str, channel_r: str, male: bool = True, age: int = 45):
+def simulate_scoring_in_live(raw: mne.io.Raw, channel_l: str, channel_r: str, sample_rate: int = 256,
+                             epoch_len_in_sec: int = 30, start_sample: int = 0, end_sample: int = 0,
+                             start_scoring_at_min: int = 5):
     """
-
     :param channel_r: the name of the right channel of the zMax Headband
     :param channel_l: the name of the left channel of the zMax Headband
     :param raw: a signal that contains the at least the l and r eeg channels specified in channels
-    :param male: optional: metadata
-    :param age: optional: metadata
-    :return: None
+    :param sample_rate:
+    :param epoch_len_in_sec
+    :param start_sample
+    :param end_sample
+    :param start_scoring_at_min
+    :return: result Dataframe
     """
 
-    score_by_eyes = True
-    score_by_hypno = True
-    score_py_psd = True
-
-    rem_epochs = []
-    psd_theta_epochs = []
-    pred_rem_epochs = []
-    combined_epochs = []
-
-    global eeg_bands
     signal = raw.copy()
     signal.pick([channel_l, channel_r])
     ch_l, ch_r = signal.get_data()
 
-    # simulate a signal that is received from second 0
-    sf = 256
-    epoch_len_in_sec = 30
-    time_offset_in_sec = 30
-    # do nothing the first 2 hours
-    idx = sf * 60 * 120
+    if start_sample > len(ch_l):
+        start_sample = len(ch_l)-1
+    if start_sample < 0:
+        start_sample = 0
+    if end_sample <= start_sample:
+        end_sample = len(ch_l)
+    if end_sample > len(ch_l):
+        end_sample = len(ch_l)
+    if start_scoring_at_min < 5:
+        start_scoring_at_min = 5
+    if start_scoring_at_min > len(ch_l)/sample_rate*60:
+        start_scoring_at_min = len(ch_l)/sample_rate*60
 
-    while idx + sf * epoch_len_in_sec < len(ch_l):
+    first_scoring = True
+
+    pwrband_feature = None
+    pwrband_thresh = None
+
+    live_scorings = []
+
+    for idx in tqdm(range(start_sample, end_sample, sample_rate*epoch_len_in_sec)):
+        if idx < start_scoring_at_min*sample_rate*60:
+            live_scorings.append([0, 0])
+            continue
+        # -----------------------
         # the signal arrives
-        loc = ch_l[0:idx + (sf * epoch_len_in_sec)]
-        roc = ch_r[0:idx + (sf * epoch_len_in_sec)]
+        # -----------------------
+        loc = ch_l[0:idx]
+        roc = ch_r[0:idx]
 
-        info = mne.create_info(ch_names=['eegl', 'eegr'], sfreq=256, ch_types='eeg')
-        mne_array = mne.io.RawArray([roc.copy(), loc.copy()], info, verbose='error')
+        info = mne.create_info(ch_names=['eegl', 'eegr'], sfreq=256, ch_types='eeg', verbose='Error')
+        mne_array = mne.io.RawArray([roc.copy(), loc.copy()], info, verbose='Error')
+        scoring_metrics = YasaClassifier.get_scoring_metrics(mne_array=mne_array, channels=['eegl', 'eegr'])
+        # current sample is scoring_metrics[-1]
 
         # -----------------------
-        # calculate power spectral density per 30 sec epoch
+        # get optimal metrics
         # -----------------------
-        if score_py_psd:
-            bandpower, bandpower_last_epoch = YasaClassifier.get_bandpower_per_epoch(mne_array)
+        if first_scoring:
+            optimal_metric = YasaClassifier.find_optimal_rem_scoring_metrics(data=scoring_metrics, rem_flag='is_rem')
+            if optimal_metric:
+                pwrband_feature = optimal_metric['Best Feature']
+                pwrband_thresh = optimal_metric['Best Metrics']['Best Threshold']
+                first_scoring = False
+                Logger().log(f'metrics for best pwrband: {pwrband_feature}, {pwrband_thresh}. {optimal_metric["Best Metrics"]["Best Accuracy"]}')
 
-            delta_mean = (bandpower_last_epoch[0, 0] + bandpower_last_epoch[0, 1]) / 2
-            theta_mean = (bandpower_last_epoch[1, 0] + bandpower_last_epoch[1, 1]) / 2
-            # alpha_mean = (bandpower_last_epoch[2, 0] + bandpower_last_epoch[2, 1]) / 2
-            # sigma_mean = (bandpower_last_epoch[3, 0] + bandpower_last_epoch[3, 1]) / 2
-            # beta_mean = (bandpower_last_epoch[4, 0] + bandpower_last_epoch[4, 1]) / 2
-            # gamma_mean = (bandpower_last_epoch[5, 0] + bandpower_last_epoch[5, 1]) / 2
-            theta_delta_ratio = theta_mean / delta_mean
-
-            if theta_delta_ratio > 0.22:
-                psd_theta_epochs.append(1)
+        rem_by_pwrband = list(np.zeros(len(scoring_metrics), dtype=int))
+        if pwrband_feature and pwrband_thresh:
+            if '/' in pwrband_feature:
+                feat1, feat2 = pwrband_feature.split('/')
+                rem_by_pwrband = (scoring_metrics[feat1] / scoring_metrics[feat2]) > pwrband_thresh
             else:
-                psd_theta_epochs.append(0)
-        # -----------------------
-        # calculate hypnogram
-        # -----------------------
-        if score_by_hypno:
-            preds = YasaClassifier.get_preds_per_epoch(mne_array=mne_array)
-            if preds[-1] == 'R':
-                pred_rem_epochs.append(1)
-            else:
-                pred_rem_epochs.append(0)
-        # -----------------------
-        # calculate rem phases
-        # -----------------------
-        if score_by_eyes:
-            rem = YasaClassifier.get_eyes(mne_array, preds)
-            if rem:
-                rem_pd = rem.summary()
-                rem_last_30_sec = rem_pd.loc[rem_pd['Start'] > (idx / 256)]
-            else:
-                rem_last_30_sec = pd.DataFrame()
+                rem_by_pwrband = (scoring_metrics[pwrband_feature]) > pwrband_thresh
 
-            if not rem_last_30_sec.empty:
-                rem_epochs.append(1)
-            else:
-                rem_epochs.append(0)
+        scoring_metrics['rem_by_pwrband'] = [int(x) for x in rem_by_pwrband]
 
-        # if all say rem
-        if score_by_hypno and score_by_eyes and score_py_psd:
-            if (theta_delta_ratio > 0.22) and preds[-1] == 'R' and not rem_last_30_sec.empty:
-                combined_epochs.append(1)
-            else:
-                combined_epochs.append(0)
+        live_scorings.append([list(scoring_metrics['is_rem'])[-1], list(scoring_metrics['rem_by_pwrband'])[-1]])
 
-        # -----------------------
-        # uptick the idx
-        # -----------------------
-        idx += sf * time_offset_in_sec
-
-    if score_by_hypno and score_by_eyes and score_py_psd:
-        print(f'combined_epochs: {combined_epochs}')
-    if score_by_eyes:
-        print(f'rem_epochs: {rem_epochs}')
-    if score_py_psd:
-        print(f'psd_theta_epochs: {psd_theta_epochs}')
-    if score_by_hypno:
-        print(f'pred_rem_epochs: {pred_rem_epochs}')
-
-    scoring_df = pd.DataFrame(list(zip(combined_epochs, rem_epochs, psd_theta_epochs, pred_rem_epochs)), columns=['combines', 'eyes', 'theta/delta', 'pred'])
-    print(scoring_df.head())
-    scoring_df.to_csv('scoring_results.csv')
-
+    data = pd.DataFrame.from_records(np.array(live_scorings), columns=['is_rem', 'rem_by_pwrband'])
+    return data
 
 
 if __name__ == '__main__':
-    my_raw_path = 'C:/coding/git/dreamento/dreamento-online/source_code/Drec/recordings/recording-date-2024-11-27-time-21-39-45/recording-date-2024-11-27-time-21-39-45/complete_recording.edf'
-    z_max_path = 'C:/coding/git/dreamento/dreamento-online/source_code/Drec/recordings/2024 11 27 - 21 39 27/2024 11 27 - 21 39 27/'
+    pass
 
-    channels = ['eegl', 'eegr']
-
-    raw_own = YasaClassifier.get_raw_eeg_from_edf(my_raw_path).pick('eeg')
-    raw_zmax_l = YasaClassifier.get_raw_eeg_from_edf(z_max_path + 'EEG L.edf')
-    raw_zmax_r = YasaClassifier.get_raw_eeg_from_edf(z_max_path + 'EEG R.edf')
-    raw_zmax = mne.io.RawArray(data=[raw_zmax_l.get_data()[0], raw_zmax_r.get_data()[0]],
-                               info=mne.create_info(ch_names=channels, sfreq=256, ch_types='eeg'),
-                               verbose='error')
-
-    hypno_own = YasaClassifier.get_sleep_hypno(raw_own, 'eegl')
-    hypno_zmax = YasaClassifier.get_sleep_hypno(raw_zmax, 'eegl')
-
-    hypno_probs_raw = YasaClassifier.get_sleep_hypno_probs(raw_own, 'eegl')
-    hypno_probs_zmax = YasaClassifier.get_sleep_hypno_probs(raw_zmax, 'eegl')
-
-    bandpower_p_epoch_raw = YasaClassifier.get_bandpower_per_epoch(raw_own)
-    bandpower_p_epoch_zmax = YasaClassifier.get_bandpower_per_epoch(raw_zmax)
-
-    preds_own = YasaClassifier.get_preds_per_epoch(raw_own)
-    preds_zmax = YasaClassifier.get_preds_per_epoch(raw_zmax)
-
-    preds_p_sample_own = YasaClassifier.get_preds_per_sample(raw_own, preds_own, channels)
-    preds_p_sample_zmax = YasaClassifier.get_preds_per_sample(raw_zmax, preds_zmax, channels)
-
-    eyes_own = YasaClassifier.get_eyes(raw_own, channels)
-    eyes_zmax = YasaClassifier.get_eyes(raw_zmax, channels)
-
-    bandpower_own = YasaClassifier.get_bandpower(raw_own, channels, preds_p_sample_own)
-    bandpower_zmax = YasaClassifier.get_bandpower(raw_zmax, channels, preds_p_sample_zmax)
-
-    agr_own = YasaClassifier.get_epoch_by_epoch_agreement([yasa.Hypnogram(hypno_zmax, scorer='1')],
-                                                          [yasa.Hypnogram(hypno_own, scorer='2')])
-
-# TODO:
-# check if rem_detect performs exactly the same even if the signal is fed in pieces
-# if yes just do rem detection of the last 15 seconds

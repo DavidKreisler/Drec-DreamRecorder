@@ -18,12 +18,14 @@ class SingletonMeta(type):
 class Logger(metaclass=SingletonMeta):
     def __init__(self):
         # Clear existing handlers from the root logger
-        for handler in logging.root.handlers[:]:
-            logging.root.removeHandler(handler)
+        #for handler in logging.root.handlers[:]:
+        #    logging.root.removeHandler(handler)
 
         #logging.basicConfig(filename='log.log', encoding='utf-8')
-        self.logger = logging.getLogger('')
+        self.logger = logging.getLogger('Drec')
         self.logger.setLevel('DEBUG')
+
+        self.logger.propagate = False
 
         # file handler
         fh = logging.FileHandler(filename='log.log', encoding='utf-8')

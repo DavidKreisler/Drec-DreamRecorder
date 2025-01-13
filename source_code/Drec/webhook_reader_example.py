@@ -9,12 +9,15 @@ app = Flask(__name__)
 @app.route('/webhookcallback/sleepstate', methods=['POST'])
 def sleepStateHook():
     global stateStore
-    state = request.values.get('state')
+    rem_by_staging_and_eyes = request.values.get('rem_by_staging_and_eyes')
+    rem_by_powerbands = request.values.get('rem_by_powerbands')
+    time = request.values.get('time')
     epoch = request.values.get('epoch')
 
-    stateStore.append((epoch, state))
+    stateStore.append((time, epoch, rem_by_staging_and_eyes, rem_by_powerbands))
 
-    print(f'state: {state}')
+    print(f'rem_by_staging_and_eyes: {rem_by_staging_and_eyes}')
+    print(f'rem_by_powerbands: {rem_by_powerbands}')
     print('epoch: ' + str(epoch))
 
     return "received"
@@ -31,7 +34,7 @@ def helloHook():
 @app.route('/webhookcallback/finished', methods=['POST'])
 def recordingFinishedHook():
     global stateStore
-    lines = [', '.join([str(epoch), str(state)]) for epoch, state in stateStore]
+    lines = [', '.join([str(time), str(epoch), str(rem_by_staging_and_eyes), str(rem_by_powerbands)]) for time, epoch, rem_by_staging_and_eyes, rem_by_powerbands in stateStore]
     with open('received_sleep_states.txt', 'w') as f:
         f.writelines(lines)
     stateStore = []

@@ -4,7 +4,7 @@ import time
 import mne
 import numpy as np
 
-from scripts.Utils.Int_Hex_conversion import numberToWord, descaleEEG
+from source_code.Drec.scripts.Utils.Int_Hex_conversion import numberToWord, descaleEEG
 
 
 class HD_Server_Sim:
@@ -226,7 +226,6 @@ class HD_Server_Sim:
 if __name__ == "__main__":
 
     server = HD_Server_Sim()
-    #server.message_to_hex(1295, 1022)
     server.load_edf('C:/coding/git/dreamento/dreamento-online/source_code/Drec/recordings/2024 12 23 - 22 20 45/2024 12 23 - 22 20 45/')
 
     # Start the server
