@@ -1,3 +1,5 @@
+import traceback
+
 import mne.io
 import numpy as np
 import pandas as pd
@@ -132,10 +134,15 @@ class YasaClassifier:
         # binarize results by eyes
         eyes_bin = list(np.zeros(len(sleep_stage_rem)))
         if eyes:  # eyes may be None if no rem events were found
-            eyes_mask = eyes.get_mask()  # mask containing
-            for bin_idx, sample_idx in enumerate(range(0, len(eyes_mask[0, 0:len(eyes_mask[0])]), 30 * sample_rate)):
-                min_val = min([1, sum(eyes_mask[0][sample_idx:sample_idx+30*sample_rate])])
-                eyes_bin[bin_idx] = min_val
+            try:
+                eyes_mask = eyes.get_mask()  # mask containing
+                for bin_idx, sample_idx in enumerate(range(0, len(eyes_mask[0, 0:len(eyes_mask[0])]), 30 * sample_rate)):
+                    min_val = min([1, sum(eyes_mask[0][sample_idx:sample_idx+30*sample_rate])])
+                    eyes_bin[bin_idx] = min_val
+            except Exception as e:
+                Logger().log(f'error happened at eyes.get_mask or afterwards. error is {traceback.format_exc()}', 'ERROR')
+                Logger().log(f'eyes is: {eyes}', 'DEBUG')
+                eyes_bin = list(np.zeros(len(sleep_stage_rem)))
 
         # combine into one df
         data = pd.DataFrame(bandpower, columns=['delta', 'theta', 'alpha', 'sigma', 'beta', 'gamma'])
