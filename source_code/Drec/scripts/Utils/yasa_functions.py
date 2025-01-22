@@ -214,7 +214,7 @@ class YasaClassifier:
         X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=test_size,
                                                             random_state=random_state)
         if len(y_train.unique()) <= 1 or len(y_test.unique()) <= 1:
-            Logger().log(f'not enough positive samples for train_test_split! aborting', 'debug')
+            Logger().log(f'not enough positive samples to find best scoring metric by powerbands', 'debug')
             return None
 
         # Evaluate each feature
@@ -318,7 +318,7 @@ def simulate_scoring_in_live(raw: mne.io.Raw, channel_l: str, channel_r: str, sa
                 pwrband_feature = optimal_metric['Best Feature']
                 pwrband_thresh = optimal_metric['Best Metrics']['Best Threshold']
                 first_scoring = False
-                Logger().log(f'metrics for best pwrband: {pwrband_feature}, {pwrband_thresh}. {optimal_metric["Best Metrics"]["Best Accuracy"]}')
+                Logger().log(f'metrics for best pwrband: {pwrband_feature}, {pwrband_thresh}. {optimal_metric["Best Metrics"]["Best Accuracy"]}', 'info')
 
         rem_by_pwrband = list(np.zeros(len(scoring_metrics), dtype=int))
         if pwrband_feature and pwrband_thresh:

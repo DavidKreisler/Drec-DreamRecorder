@@ -31,7 +31,7 @@ class RecordThread(QThread):
         self.sendEpochDataSignal.emit(data, self.epochCounter)
 
     def run(self):
-        Logger().log('starting the recorder thread', 'DEBUG')
+        Logger().log('starting the recorder thread', 'info')
         recording = []
         cols = self.signalType
         cols.extend([998, 999])  # add two columns for sample number, sample time
@@ -92,9 +92,8 @@ class RecordThread(QThread):
                 buffer2analyzeIsReady = False
 
             if self.threadactive is False:
-                Logger().log('stopping headband', 'debug')
+                Logger().log('stopping headband', 'info')
                 hb.stop()
-                Logger().log('stepping out of recorder thread loop', 'debug')
                 break
 
         actual_end_time = time.time()
@@ -107,6 +106,6 @@ class RecordThread(QThread):
         self.recordingFinishedSignal.emit(f"{file_path}")  # send path of recorded file to mainWindow
 
     def stop(self):
-        Logger().log('stopping recorder Thread', 'DEBUG')
+        Logger().log('stopping recorder Thread', 'info')
         self.threadactive = False
 

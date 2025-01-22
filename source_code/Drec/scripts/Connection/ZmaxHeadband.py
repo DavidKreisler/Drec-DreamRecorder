@@ -62,7 +62,7 @@ class ZmaxHeadband():
         try:
             buf = self.sock.read_one_line()
         except Exception as e:
-            Logger().log(f'exception at TcpSniffSocket.read_one_line: {e}')
+            Logger().log(f'exception at TcpSniffSocket.read_one_line: {e}', 'error')
             buf = ''
 
         for line in buf.split('\n'):
@@ -113,12 +113,11 @@ class ZmaxHeadband():
                                 vals.append(result[i])
                             reqVals.append(vals)
             else:
-                Logger().log(f'data in unexpected format received: {line}', 'DEBUG')
+                Logger().log(f'data in unexpected format received. not processing: {line}', 'warning')
 
         return reqVals
 
     def stop(self):
-        Logger().log('stopping socket in Headband', 'debug')
         self.sock.stop()
 
     def __del__(self):

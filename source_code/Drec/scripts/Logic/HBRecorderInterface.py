@@ -67,6 +67,7 @@ class HBRecorderInterface:
         self.recorderThread.sendEpochDataSignal.connect(self.get_epoch_data)
         self.recordingFinished = False
 
+        Logger().log(f'recording started', 'info')
         print('recording started')
 
     def stop_recording(self):
@@ -77,6 +78,7 @@ class HBRecorderInterface:
         self.recorderThread.stop()
         #self.recorderThread.quit()
         self.isRecording = False
+        Logger().log('recording stopped', 'info')
         print('recording stopped')
 
     def on_recording_finished(self):
@@ -116,11 +118,12 @@ class HBRecorderInterface:
 
     def start_scoring(self):
         self.scoreSleep = True
-        print('scoring started, waiting for new connection to HDServer.')
+        Logger().log('scoring started, waiting for new connection to HDServer.', 'info')
 
     def stop_scoring(self):
         self.scoreSleep = False
         print('scoring stopped')
+        Logger().log(f'scoring stopped', 'info')
 
     def get_epoch_data(self, data: list, epoch_counter: int):
         Logger().log('getting epoch data', 'DEBUG')
@@ -140,11 +143,6 @@ class HBRecorderInterface:
     def _set_optimum_pwrband_scoring(self):
         # get the best metrics for rem detection based on bower bands before the scoring starts
 
-        ### ----------------------------------------
-        # IS DATA IN UV?!
-        ### ----------------------------------------
-        Logger().log(f'Data has following mean values when finding best metrics: {max(self.recording[:, 0])}', 'DEBUG')
-
         # create array
         info = mne.create_info(ch_names=['eegr', 'eegl'], sfreq=self.sample_rate, ch_types='eeg', verbose='ERROR')
         mne_array = mne.io.RawArray([self.recording[:, 0], self.recording[:, 1]], info, verbose='ERROR')
@@ -156,7 +154,7 @@ class HBRecorderInterface:
         if optimal_metric:  # may be None when no rem phases are found
             self.best_scoring_feature = optimal_metric['Best Feature']
             self.best_scoring_metric = optimal_metric['Best Metrics']
-            Logger().log(f'optimal scoring metric found: {self.best_scoring_feature} with accuracy {self.best_scoring_metric["Best Accuracy"]} and a threshold of {self.best_scoring_metric["Best Threshold"]}', 'info')
+            Logger().log(f'optimal power band scoring metric found: {self.best_scoring_feature} with accuracy {self.best_scoring_metric["Best Accuracy"]} and a threshold of {self.best_scoring_metric["Best Threshold"]}', 'info')
 
     def _score_curr_data(self, epoch_counter):
         eegr = self.recording[:, 0]
@@ -204,21 +202,23 @@ class HBRecorderInterface:
             requests.post(self.webHookBaseAdress + 'sleepstate', data=data)
         except Exception as e:
             print(e)
+            Logger().log('error when posting request to webhook. webhook is probably not available', 'Warning')
             print('error when posting request to webhook. webhook is probably not available')
 
     def start_webhook(self):
+        Logger().log(f'starting webhook', 'info')
         try:
             requests.post(self.webHookBaseAdress + 'hello', data={'hello': 'hello'})
             self.webhookActive = True
         except Exception as e:
-            #print(e)
-            print('webhook seems to be offline. not activating')
+            Logger().log('webhook seems to be offline. not activating', 'warning')
+            self.webhookActive = False
             return
-        print('webhook started')
+        Logger.log(f'webhook started', 'info')
 
     def stop_webhook(self):
         self.webhookActive = False
-        print('webhook stopped')
+        Logger.log(f'webhook stopped', 'info')
 
     def set_signaltype(self, types=None):
         if self.isRecording:
