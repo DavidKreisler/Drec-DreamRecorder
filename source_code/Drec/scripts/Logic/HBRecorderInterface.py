@@ -194,7 +194,6 @@ class HBRecorderInterface:
         if len(self.rem_by_staging_and_eyes) > 0:
             time, epoch, pred = self.rem_by_staging_and_eyes[-1]
         if len(self.rem_by_powerbands) > 0:
-            Logger().log(f'rem_by_pwrband: {self.rem_by_powerbands}', 'debug')
             time_pwr_band, epoch_pwr_band, pwr_band = self.rem_by_powerbands[-1]
 
         data = {'rem_by_staging_and_eyes': pred,
