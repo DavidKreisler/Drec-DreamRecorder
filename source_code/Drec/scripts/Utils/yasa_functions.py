@@ -7,17 +7,21 @@ import yasa
 from scipy.signal import welch
 import warnings
 import itertools
+from scipy.stats import ttest_ind
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_selection import mutual_info_classif
 from tqdm import tqdm
 
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score, accuracy_score
+from sklearn.metrics import roc_auc_score, accuracy_score, precision_recall_curve
 
 from scripts.Utils.Logger import Logger
 
 warnings.filterwarnings('ignore', message='Trying to unpickle estimator LabelEncoder from version 0.24.2 when *')
+
 
 class YasaClassifier:
 
@@ -107,7 +111,48 @@ class YasaClassifier:
         return rem
 
     @staticmethod
-    def get_scoring_metrics(mne_array, sample_rate: int = 256, channels=None):
+    def get_rem_bin_per_epoch(mne_array, sample_rate: int = 256, channels=None):
+        if channels is None:
+            channels = ['eegr', 'eegl']
+
+        # get scoring based on sleep stage predictions
+        sleep_stage_predictions = YasaClassifier.get_preds_per_epoch(mne_array=mne_array)
+        sleep_stage_rem = [1 if sleep_stage_predictions[i] == 'R' else 0 for i in
+                           range(0, len(sleep_stage_predictions))]
+
+        # get scoring based on eyes
+        eyes = YasaClassifier.get_eyes(mne_array, channels, sleep_stage_predictions)
+
+        # binarize results by eyes
+        eyes_bin = list(np.zeros(len(sleep_stage_rem)))
+        if eyes:  # eyes may be None if no rem events were found
+            try:
+                eyes_mask = eyes.get_mask()  # mask containing
+                for bin_idx in range(0, int(len(eyes_mask[0]) / (30 * sample_rate))):
+                    sample_idx = bin_idx * 30 * sample_rate
+                    min_val = min([1, sum(eyes_mask[0][sample_idx:sample_idx + 30 * sample_rate])])
+                    eyes_bin[bin_idx] = min_val
+
+            except Exception as e:
+                Logger().log(f'error happened at eyes.get_mask or afterwards. error is {traceback.format_exc()}',
+                             'ERROR')
+                Logger().log(f'eyes is: {eyes}', 'DEBUG')
+
+        # get scoring based on frequency bandpower
+        # this doesnt work because no metric within the bandpower yields performance that is good enough (F1 score above 0.6 at least)
+        #bandpower, _ = YasaClassifier.get_bandpower_per_epoch(mne_array)  # bandpwr has shape [band, epoch, channel]
+        #bandpower = bandpower.mean(axis=2).T  # now has the shape [epoch, band], so each 'row' is an epoch
+
+        data = pd.DataFrame()
+        data['rem_by_prediction'] = sleep_stage_rem
+        data['rem_by_eyes'] = eyes_bin
+
+        data['rem_by_all'] = [int(sum([sleep_stage_rem[i], eyes_bin[i]]) / 2) for i in range(0, len(sleep_stage_rem))]
+
+        return data
+
+    @staticmethod
+    def get_power_bands_and_ground_truth_per_epoch(mne_array, sample_rate: int = 256, channels=None):
         """
         param: mne_array
         param: sample_rate
@@ -136,13 +181,15 @@ class YasaClassifier:
         if eyes:  # eyes may be None if no rem events were found
             try:
                 eyes_mask = eyes.get_mask()  # mask containing
-                for bin_idx, sample_idx in enumerate(range(0, len(eyes_mask[0, 0:len(eyes_mask[0])]), 30 * sample_rate)):
-                    min_val = min([1, sum(eyes_mask[0][sample_idx:sample_idx+30*sample_rate])])
+                for bin_idx in range(0, int(len(eyes_mask[0]) / (30 * sample_rate))):
+                    sample_idx = bin_idx * 30 * sample_rate
+                    min_val = min([1, sum(eyes_mask[0][sample_idx:sample_idx + 30 * sample_rate])])
                     eyes_bin[bin_idx] = min_val
+
             except Exception as e:
                 Logger().log(f'error happened at eyes.get_mask or afterwards. error is {traceback.format_exc()}', 'ERROR')
                 Logger().log(f'eyes is: {eyes}', 'DEBUG')
-                eyes_bin = list(np.zeros(len(sleep_stage_rem)))
+                # eyes_bin = list(np.zeros(len(sleep_stage_rem)))
 
         # combine into one df
         data = pd.DataFrame(bandpower, columns=['delta', 'theta', 'alpha', 'sigma', 'beta', 'gamma'])
@@ -156,103 +203,108 @@ class YasaClassifier:
         return agr
 
     @staticmethod
-    def get_theta_delta_threshold(data: pd.DataFrame, column_name: str, n_clusters: int = 3):
+    def find_best_scoring_metrics_for_powerbands(data: pd.DataFrame, target_column: str = 'is_rem'):
         """
-        data: pd.DataFrame that contains only the theta/delta ratio per epoch. SideEffect: data gets an additional
-        column: cluster column_name: the name of the column within the dataframe that contains the theta/delta ratio
+        data has to contain each frequency band as columns and one column with the name specified in 'target_column'.
+        best to use the dataframe provided by self.get_power_bands_and_ground_truth_per_epoch()
         """
-        d = pd.DataFrame(data[column_name])
-        scaler = StandardScaler()
-        features = scaler.fit_transform(d)
-
-        kmeans = KMeans(n_clusters=n_clusters)
-        data['cluster'] = kmeans.fit_predict(features)
-        centers = kmeans.cluster_centers_
-
-        original_centers = scaler.inverse_transform(centers).flatten()
-        original_centers.sort()
-        optimum_thresh = (original_centers[-1] - original_centers[-2]) / 2
-
-        return optimum_thresh, original_centers
-
-    @staticmethod
-    def find_optimal_rem_scoring_metrics(data: pd.DataFrame, rem_flag='is_rem', test_size=0.2, random_state=42):
-        """
-        Finds the optimal power bands and ratios to distinguish between REM and non-REM epochs
-        and determines the optimal threshold for the best feature.
-
-        Parameters:
-        - data: pd.DataFrame
-            A DataFrame containing power bands as columns and a REM flag column.
-        - rem_flag: str
-            The name of the column indicating REM (1) vs non-REM (0).
-        - test_size: float
-            Proportion of the dataset to include in the test split.
-        - random_state: int
-            Random seed for reproducibility.
-
-        Returns:
-        - dict
-            A dictionary containing the best feature, its metrics, optimal threshold, and scores for all features.
-        """
-        # Separate features and target
-        target = data[rem_flag]
-        if len(target.unique()) == 1:
-            Logger().log(f'only negative samples present when finding best scoring metrics. aborting.', 'debug')
-            return None
-        features = data.drop(columns=[rem_flag])
-        band_names = features.columns
-
-        # Generate all possible band ratios
-        ratios = []
-        for band1, band2 in itertools.combinations(band_names, 2):
+        features = data.copy()
+        new_columns = {}
+        for band1, band2 in itertools.combinations(features.columns, 2):
+            if band1 == target_column or band2 == target_column:
+                continue
             ratio_name = f"{band1}/{band2}"
-            features[ratio_name] = features[band1] / features[band2]
-            ratios.append(ratio_name)
+            new_columns[ratio_name] = features[band1] / features[band2]
 
-        # Train-test split
-        X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=test_size,
-                                                            random_state=random_state)
-        if len(y_train.unique()) <= 1 or len(y_test.unique()) <= 1:
-            Logger().log(f'not enough positive samples to find best scoring metric by powerbands', 'debug')
-            return None
+        features = pd.concat([features, pd.DataFrame(new_columns, index=features.index)], axis=1)
 
-        # Evaluate each feature
-        feature_scores = {}
-        for feature in features.columns:
-            # Train logistic regression using one feature
-            model = LogisticRegression()
-            model.fit(X_train[[feature]], y_train)
-            y_pred_proba = model.predict_proba(X_test[[feature]])[:, 1]
+        best_columns = []
+        best_column_metrics = dict()
+        ### best column ###
+        # by correlation
+        correlations = features.corr()[target_column].drop(target_column).abs()
+        best_column_corr = correlations.idxmax()
+        best_columns.append(best_column_corr)
+        print(
+            f"The best column by correlation is: {best_column_corr} with correlation: {correlations[best_column_corr]}")
+        best_column_metrics['correlation'] = {f'{best_column_corr}': correlations[best_column_corr]}
 
-            # Compute metrics
-            auc = roc_auc_score(y_test, y_pred_proba)
-            thresholds = np.linspace(0, 1, 101)  # Test thresholds from 0 to 1
-            best_threshold, best_metric = None, 0
+        # by t-test
+        best_pvalue = float('inf')
+        best_column_ttest = None
+        for column in features.columns:
+            if column != target_column:
+                group1 = features.loc[features[target_column] == 0][column]
+                group2 = features.loc[features[target_column] == 1][column]
 
-            # Evaluate thresholds
-            for threshold in thresholds:
-                y_pred = (y_pred_proba >= threshold).astype(int)
-                acc = accuracy_score(y_test, y_pred)  # You can replace this with other metrics
-                if acc > best_metric:  # Replace `acc` with your chosen metric
-                    best_metric = acc
-                    best_threshold = threshold
+                _, pvalue = ttest_ind(group1, group2, equal_var=False)
+                if pvalue < best_pvalue:
+                    best_pvalue = pvalue
+                    best_column_ttest = column
 
-            feature_scores[feature] = {
-                'AUC': auc,
-                'Best Threshold': best_threshold,
-                'Best Accuracy': best_metric
-            }
-        # Find the best feature
-        best_feature = max(feature_scores, key=lambda x: feature_scores[x]['AUC'])
-        best_metrics = feature_scores[best_feature]
+        best_columns.append(best_column_ttest)
+        print(f"The best column by t-test is: {best_column_ttest} with p-value: {best_pvalue}")
+        best_column_metrics['t-test'] = {f'{best_column_ttest}': best_pvalue}
 
-        # Return results
-        return {
-            'Best Feature': best_feature,
-            'Best Metrics': best_metrics,
-            'All Feature Scores': feature_scores
-        }
+        # by random forest
+        # Prepare features and labels
+        X = features.drop(columns=[target_column])
+        y = features[target_column]
+
+        # Train a Random Forest Classifier
+        clf = RandomForestClassifier(random_state=42)
+        clf.fit(X, y)
+
+        # Extract feature importance
+        importances = clf.feature_importances_
+        best_column_index = importances.argmax()
+        best_column_rf = X.columns[best_column_index]
+
+        best_columns.append(best_column_rf)
+        print(
+            f"The best column by random forest is: {best_column_rf} with importance score: {importances[best_column_index]}")
+        best_column_metrics['random forest'] = {f'{best_column_rf}': importances[best_column_index]}
+
+        # by mutual info classifyer
+        X = features.drop(columns=[target_column])
+        y = features[target_column]
+
+        # Compute mutual information scores
+        mi_scores = mutual_info_classif(X, y)
+        mi_scores_series = pd.Series(mi_scores, index=X.columns)
+
+        best_column_mutcl = mi_scores_series.idxmax()
+        best_columns.append(best_column_mutcl)
+        print(
+            f"The best column by mutual information score is: {best_column_mutcl} with mutual information score: {mi_scores_series[best_column_mutcl]}")
+        best_column_metrics['mif'] = {f'{best_column_mutcl}': mi_scores_series[best_column_mutcl]}
+
+        ### best threshold ###
+        best_columns = list(set(best_columns))
+        best_metrics = dict()
+        for column in best_columns:
+            best_metrics[column] = dict()
+            print(f'for column {column}')
+            # according to F1 score #
+            precision, recall, thresholds = precision_recall_curve(features[target_column], features[column])
+            # Find the threshold with the best F1-score
+            f1_scores = 2 * (precision * recall) / (precision + recall + 0.00000001)
+            optimal_idx = f1_scores.argmax()
+            optimal_threshold = thresholds[optimal_idx]
+
+            best_metrics[column]['threshold'] = optimal_threshold
+            best_metrics[column]['F1 score'] = f1_scores.max()
+
+            print(f"Optimal threshold: {optimal_threshold} with an F1 score of {f1_scores.max()}")
+
+        ## optionally save the results
+        # features.to_csv(f'DataExplo/{filename}')
+        # with open(f'DataExplo/{filename}_bets_metrics_per_columns', 'w') as f:
+        #    f.write(json.dumps(best_column_metrics))
+        # with open(f'DataExplo/{filename}_best_thresh_per_columns', 'w') as f:
+        #    f.write(json.dumps(best_metrics))
+
+        return features, best_column_metrics, best_metrics
 
 
 def simulate_scoring_in_live(raw: mne.io.Raw, channel_l: str, channel_r: str, sample_rate: int = 256,
@@ -287,16 +339,11 @@ def simulate_scoring_in_live(raw: mne.io.Raw, channel_l: str, channel_r: str, sa
     if start_scoring_at_min > len(ch_l)/sample_rate*60:
         start_scoring_at_min = len(ch_l)/sample_rate*60
 
-    first_scoring = True
-
-    pwrband_feature = None
-    pwrband_thresh = None
-
     live_scorings = []
 
     for idx in tqdm(range(start_sample, end_sample, sample_rate*epoch_len_in_sec)):
         if idx < start_scoring_at_min*sample_rate*60:
-            live_scorings.append([0, 0])
+            live_scorings.append([0, 0, 0])
             continue
         # -----------------------
         # the signal arrives
@@ -306,33 +353,11 @@ def simulate_scoring_in_live(raw: mne.io.Raw, channel_l: str, channel_r: str, sa
 
         info = mne.create_info(ch_names=['eegl', 'eegr'], sfreq=256, ch_types='eeg', verbose='Error')
         mne_array = mne.io.RawArray([roc.copy(), loc.copy()], info, verbose='Error')
-        scoring_metrics = YasaClassifier.get_scoring_metrics(mne_array=mne_array, channels=['eegl', 'eegr'])
-        # current sample is scoring_metrics[-1]
+        data = YasaClassifier.get_rem_bin_per_epoch(mne_array, 256, ['eegr', 'eegl'])
 
-        # -----------------------
-        # get optimal metrics
-        # -----------------------
-        if first_scoring:
-            optimal_metric = YasaClassifier.find_optimal_rem_scoring_metrics(data=scoring_metrics, rem_flag='is_rem')
-            if optimal_metric:
-                pwrband_feature = optimal_metric['Best Feature']
-                pwrband_thresh = optimal_metric['Best Metrics']['Best Threshold']
-                first_scoring = False
-                Logger().log(f'metrics for best pwrband: {pwrband_feature}, {pwrband_thresh}. {optimal_metric["Best Metrics"]["Best Accuracy"]}', 'info')
+        live_scorings.append([int(list(data['rem_by_prediction'])[-1]), int(list(data['rem_by_eyes'])[-1]), int(list(data['rem_by_all'])[-1])])
 
-        rem_by_pwrband = list(np.zeros(len(scoring_metrics), dtype=int))
-        if pwrband_feature and pwrband_thresh:
-            if '/' in pwrband_feature:
-                feat1, feat2 = pwrband_feature.split('/')
-                rem_by_pwrband = (scoring_metrics[feat1] / scoring_metrics[feat2]) > pwrband_thresh
-            else:
-                rem_by_pwrband = (scoring_metrics[pwrband_feature]) > pwrband_thresh
-
-        scoring_metrics['rem_by_pwrband'] = [int(x) for x in rem_by_pwrband]
-
-        live_scorings.append([list(scoring_metrics['is_rem'])[-1], list(scoring_metrics['rem_by_pwrband'])[-1]])
-
-    data = pd.DataFrame.from_records(np.array(live_scorings), columns=['is_rem', 'rem_by_pwrband'])
+    data = pd.DataFrame.from_records(np.array(live_scorings), columns=['is_rem', 'rem_by_eyes', 'rem_by_all'])
     return data
 
 
