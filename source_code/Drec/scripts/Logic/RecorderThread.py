@@ -45,6 +45,7 @@ class RecordThread(QThread):
         actual_start_time = time.time()
         print(f'actual start time {actual_start_time}')
 
+        buffer = []
         buffer2analyzeIsReady = False
         dataSamplesToAnalyzeCounter = 0  # count samples, when reach 30*256, feed all to deep learning model
 
@@ -71,6 +72,7 @@ class RecordThread(QThread):
                         self.dataSampleCounter += 1
                         self.totalDataSampleCounter += 1
                         recording.append(dataEntry)
+                        buffer.append(dataEntry)
                         if not buffer2analyzeIsReady:
                             if self.secondCounter >= 2:  # ignore 1st second for analysis, because it is unstable
                                 dataSamplesToAnalyzeCounter += 1
@@ -85,10 +87,13 @@ class RecordThread(QThread):
 
             if buffer2analyzeIsReady:
                 # send all epoch data
-                self.sendEpochData(recording[-dataSamplesToAnalyzeCounter:])
+                while len(buffer) >= 30*self.sample_rate:
+                    self.sendEpochData(buffer[0:30*self.sample_rate])
+                    buffer = buffer[30*self.sample_rate:]
 
                 # reset
                 dataSamplesToAnalyzeCounter = 0
+
                 buffer2analyzeIsReady = False
 
             if self.threadactive is False:
