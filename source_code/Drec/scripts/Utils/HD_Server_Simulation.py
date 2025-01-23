@@ -4,7 +4,7 @@ import time
 import mne
 import numpy as np
 
-from source_code.Drec.scripts.Utils.Int_Hex_conversion import numberToWord, descaleEEG
+from scripts.Client_Multi import signal_to_hex
 
 
 class HD_Server_Sim:
@@ -61,7 +61,7 @@ class HD_Server_Sim:
                 for idx in range(0, len(chunk[0])):
                     sigl = chunk[0][idx]
                     sigr = chunk[1][idx]
-                    accumulated_message += self.signal_to_hex(sigl, sigr) + '\r\n'
+                    accumulated_message += signal_to_hex(sigl, sigr) + '\r\n'
 
                 self.broadcast_data(accumulated_message)
                 #print(accumulated_message)
@@ -174,53 +174,6 @@ class HD_Server_Sim:
         except Exception as e:
             print(f"[ERROR] Failed to load EDF file: {e}")
             self.eeg_data = None
-
-    # ----------------------------------------
-    # signal transformation methods
-    # ----------------------------------------
-    def signal_to_hex(self, sigl, sigr):
-        descaled_sigl = descaleEEG(sigl)
-        descaled_sigr = descaleEEG(sigr)
-        buf = f"D.06-"\
-              f"{numberToWord(descaled_sigl)}-"\
-              f"{numberToWord(descaled_sigr)}-"\
-              f"00-00-00-00-" \
-              f"00-00-00-00-" \
-              f"00-00-00-00-" \
-              f"00-00-00-00-" \
-              f"00-00-00-00-" \
-              f"00-00-00-00-" \
-              f"00-00-00-00-" \
-              f"00-00-00-00-" \
-              f"00-00-00" \
-
-        return buf
-
-    def descaleAccel(self, sig):
-        d = (sig + 2) * 4096 / 4
-        return d
-
-    def BatteryVoltage(self, v):  # Volts to word value
-        vbat = v / 6.60 * 1024
-        return vbat
-
-    def BodyTemp(self, t):  # degree C to word value
-        a = ((t - 15) * 0.0565537333333333) + 1.0446
-        bodytemp = a * 1024 / 3.3
-        return bodytemp
-
-    def hex2dec(self, s):
-        """return the integer value of a hexadecimal string s"""
-        return int(s, 16)
-
-    def dec2hex(self, n, pad=0):
-        """return the hexadecimal string representation of integer n"""
-        s = "%X" % n
-        if pad == 0:
-            return s
-        else:
-            # for example if pad = 3, the dec2hex(5,2) = '005'
-            return s.rjust(pad, '0')
 
 
 if __name__ == "__main__":
