@@ -102,7 +102,8 @@ class HBRecorderInterface:
         # save the predictions
         if self.rem_by_staging_and_eyes:
             with open(os.path.join(filePath, "rem_by_eyes_and_staging.txt"), "a") as outfile:
-                outfile.write("\n".join(str(epoch) + '-' + str(pred) for time, epoch, pred in self.rem_by_staging_and_eyes))
+                outfile.write("\n".join(str(epoch) + '-' + str(rem_by_staging) + '-' + str(rem_by_eyes)
+                                        for time, epoch, rem_by_staging, rem_by_eyes in self.rem_by_staging_and_eyes))
 
         # send signal to webhook if it is running
         if self.webhookActive:
@@ -139,24 +140,27 @@ class HBRecorderInterface:
         data = YasaClassifier.get_rem_bin_per_epoch(mne_array, 256, ['eegr', 'eegl'])
         #data = YasaClassifier.get_power_bands_and_ground_truth_per_epoch(mne_array, 256, ['eegr', 'eegl'])
 
-        predictionByEyesAndScoringToTransmit = list(data['rem_by_all'])[-1]
+        pred_by_all = list(data['rem_by_all'])[-1]
+        pred_by_scoring = list(data['rem_by_prediction'])[-1]
+        pred_by_eyes = int(list(data['rem_by_eyes'])[-1])
         self.rem_by_staging_and_eyes.append((datetime.now(),
                                              epoch_counter,
-                                             predictionByEyesAndScoringToTransmit))
+                                             pred_by_scoring,
+                                             pred_by_eyes))
 
     def _send_to_webhook(self):
         if len(self.rem_by_staging_and_eyes) <= 0:
             return
-        pred = 'None'
-        pwr_band = 'None'
+        rem_by_scoring = 'None'
+        rem_by_eyes = 'None'
         time = 'None'
         epoch = 'None'
 
         if len(self.rem_by_staging_and_eyes) > 0:
-            time, epoch, pred = self.rem_by_staging_and_eyes[-1]
+            time, epoch, rem_by_scoring, rem_by_eyes = self.rem_by_staging_and_eyes[-1]
 
-        data = {'rem_by_staging_and_eyes': pred,
-                'rem_by_powerbands': pwr_band,
+        data = {'rem_by_staging': rem_by_scoring,
+                'rem_by_eyes': rem_by_eyes,
                 'time': time,
                 'epoch': epoch}
         try:

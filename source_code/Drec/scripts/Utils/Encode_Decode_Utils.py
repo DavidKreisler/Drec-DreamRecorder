@@ -1,4 +1,4 @@
-from source_code.Drec.scripts.Utils.Int_Hex_conversion import numberToWord, descaleEEG
+from scripts.Utils.Int_Hex_conversion import numberToWord, descaleEEG
 
 
 # ----------------------------------------

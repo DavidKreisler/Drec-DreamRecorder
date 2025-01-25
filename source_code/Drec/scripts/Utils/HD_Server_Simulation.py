@@ -4,7 +4,7 @@ import time
 import mne
 import numpy as np
 
-from scripts.Client_Multi import signal_to_hex
+from scripts.Utils.Encode_Decode_Utils import signal_to_hex
 
 
 class HD_Server_Sim:

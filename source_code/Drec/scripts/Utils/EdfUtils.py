@@ -26,8 +26,8 @@ def save_edf(signals: np.ndarray, channels: list, path: str, file_name: str, sig
     # define mins and max
     digital_min = -(256 ** 2) / 2
     digital_max = (256 ** 2) / 2 - 1
-    physical_min = -1976  # np.ceil(max(min(min(signals_reformatted[0]), min(signals_reformatted[1])), -10000))
-    physical_max = 1976  # np.floor(min(max(max(signals_reformatted[0]), max(signals_reformatted[1])), 10000))
+    physical_min = np.ceil(max(min(min(signals_reformatted[0]), min(signals_reformatted[1])), digital_min))
+    physical_max = np.floor(min(max(max(signals_reformatted[0]), max(signals_reformatted[1])), digital_max))
 
     # transform the signal
     signals_reformatted = np.clip(signals_reformatted, physical_min, physical_max)
@@ -36,7 +36,6 @@ def save_edf(signals: np.ndarray, channels: list, path: str, file_name: str, sig
     channel_names = [str(ZmaxDataID(channel)) for channel in channels]
     signal_headers = highlevel.make_signal_headers(channel_names,
                                                    sample_frequency=sample_rate,
-
                                                    physical_min=physical_min,
                                                    physical_max=physical_max,
                                                    digital_min=digital_min,

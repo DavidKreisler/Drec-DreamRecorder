@@ -3,8 +3,10 @@ import time
 import numpy as np
 import enum
 
+from scripts.Connection.SimulationSocket import SimulationSocket
 from scripts.Connection.TcpSniffSocket import TcpSniffSocket
 from scripts.Utils.Logger import Logger
+
 
 
 class ZmaxDataID(enum.Enum):
@@ -33,6 +35,16 @@ class ZmaxDataID(enum.Enum):
 
 
 def connect():
+    #### DEBUG start ###
+    ## this allows to pass a recorded file through the mainconsole really fast and without any necessity for a connection
+    ## BUT the interaction with the CLI is not possible until the recording is completely passed through (because the
+    ## program gets stuck receiving data), which is around 5 to 10 minuts for a 4 hour recording on my shitty laptop
+    ## just replace the TCPSNiffSOcket with the one below
+
+    #path = 'C:/coding/git/dreamento/dreamento-online/source_code/Drec/recordings/2025 1 8 - 21 09 17/2025 1 8 - 21 09 17/EEG L.edf'
+    #sock = SimulationSocket(path)
+    #### DEBUG end ###
+
     sock = TcpSniffSocket()
     sock.connect()
     return sock
@@ -47,7 +59,6 @@ class ZmaxHeadband():
         self.buf_dy = np.zeros((self.buf_size, 1))
         self.buf_dz = np.zeros((self.buf_size, 1))
         self.sock = connect()
-        self.msgn = 1  # message number for sending stimulation
 
     def read(self, reqIDs=None):
         """
@@ -171,13 +182,4 @@ class ZmaxHeadband():
 
 if __name__ == '__main__':
     hb = ZmaxHeadband()
-    i = 0
-    while True:
-        print(hb.read([0, 1]))
-        if i > 1000:
-            break
-        i += 1
-    hb.stop()
-    while True:
-        print(hb.read([0, 1]))
-        time.sleep(1)
+    print(hb.read())
