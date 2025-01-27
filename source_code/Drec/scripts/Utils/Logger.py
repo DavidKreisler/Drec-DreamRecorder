@@ -21,7 +21,6 @@ class Logger(metaclass=SingletonMeta):
         #for handler in logging.root.handlers[:]:
         #    logging.root.removeHandler(handler)
 
-        #logging.basicConfig(filename='log.log', encoding='utf-8')
         self.logger = logging.getLogger('Drec')
         self.logger.setLevel('DEBUG')
 

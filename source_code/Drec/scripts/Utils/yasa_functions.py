@@ -121,7 +121,7 @@ class YasaClassifier:
                            range(0, len(sleep_stage_predictions))]
 
         # get scoring based on eyes
-        eyes = YasaClassifier.get_eyes(mne_array, channels, sleep_stage_predictions)
+        eyes = YasaClassifier.get_eyes(mne_array, channels, None)
 
         # binarize results by eyes
         eyes_bin = list(np.zeros(len(sleep_stage_rem)))

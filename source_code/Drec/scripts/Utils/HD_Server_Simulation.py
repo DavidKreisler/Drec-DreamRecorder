@@ -179,7 +179,7 @@ class HD_Server_Sim:
 if __name__ == "__main__":
 
     server = HD_Server_Sim()
-    server.load_edf('C:/coding/git/dreamento/dreamento-online/source_code/Drec/recordings/2024 12 23 - 22 20 45/2024 12 23 - 22 20 45/')
+    server.load_edf('E:/coding/git/Drec-DreamRecorder/source_code/Drec/recordings/2025 1 8 - 21 09 17/2025 1 8 - 21 09 17/')
 
     # Start the server
     server.start_server()
