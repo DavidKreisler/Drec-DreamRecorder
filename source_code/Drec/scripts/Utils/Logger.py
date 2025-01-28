@@ -32,7 +32,7 @@ class Logger(metaclass=SingletonMeta):
 
         # console handler
         ch = logging.StreamHandler()
-        ch.setLevel('ERROR')
+        ch.setLevel(logging.CRITICAL)
 
         # create formatter and add it to the handlers
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -68,6 +68,4 @@ if __name__ == '__main__':
     Logger().log(message, 'WARNING')
     Logger().log(message, 'ERROR')
     Logger().log(message, 'CRITICAL')
-    while True:
-        time.sleep(1)
 

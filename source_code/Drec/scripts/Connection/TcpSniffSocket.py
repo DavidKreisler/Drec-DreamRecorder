@@ -70,6 +70,7 @@ class TcpSniffSocket:
                 rev_con = Connection(ip_layer.dst, tcp_layer.dport, ip_layer.src, tcp_layer.sport, None)
                 self.connections[reverse_conn_id] = rev_con
 
+                Logger().log(f"[INFO] New connection started: {conn_id}", 'info')
                 print(f"[INFO] New connection started: {conn_id}")
 
             # handle payloads
@@ -93,6 +94,7 @@ class TcpSniffSocket:
                 # Handle FIN or RST packets to close the connection
                 if tcp_layer.flags == "F" or tcp_layer.flags == "FA" or tcp_layer.flags == "R" or tcp_layer.flags == "RA":
                     print(f"[INFO] Connection closed: {active_conn}")
+                    Logger().log(f"[INFO] Connection closed: {active_conn}", 'info')
 
                     # Clean up the connection data
                     del self.connections[active_conn]
