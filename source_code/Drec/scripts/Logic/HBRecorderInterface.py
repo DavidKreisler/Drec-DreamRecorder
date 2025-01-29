@@ -101,9 +101,15 @@ class HBRecorderInterface:
 
         # save the predictions
         if self.rem_by_staging_and_eyes:
-            with open(os.path.join(filePath, "rem_by_eyes_and_staging.txt"), "a") as outfile:
-                outfile.write("\n".join(str(epoch) + '-' + str(rem_by_staging) + '-' + str(rem_by_eyes)
-                                        for time, epoch, rem_by_staging, rem_by_eyes in self.rem_by_staging_and_eyes))
+            # write only the lines that are rem:
+            rem_lines = []
+            for time, epoch, rem_by_staging, rem_by_eyes in self.rem_by_staging_and_eyes:
+                if rem_by_staging == 1 and rem_by_eyes == 1:
+                    rem_lines.append((epoch, epoch*30, 'REM detected'))
+
+            with open(os.path.join(filePath, "rem_markers.txt"), "a") as outfile:
+                outfile.write("\n".join(str(epoch) + ' - ' + str(seconds) + 's' + ' - ' + str(is_rem)
+                                        for epoch, seconds, is_rem in rem_lines))
 
         # send signal to webhook if it is running
         if self.webhookActive:
