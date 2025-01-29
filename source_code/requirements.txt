@@ -1,3 +1,4 @@
+altgraph==0.17.4
 antropy==0.1.6
 asttokens==2.4.1
 blinker==1.9.0
@@ -38,6 +39,7 @@ numpy==1.26.4
 packaging==24.2
 pandas==2.2.3
 parso==0.8.4
+pefile==2023.2.7
 pillow==11.0.0
 platformdirs==4.3.6
 pooch==1.8.2
@@ -45,6 +47,8 @@ prompt_toolkit==3.0.48
 pure_eval==0.2.3
 pyEDFlib==0.1.38
 Pygments==2.18.0
+pyinstaller==6.11.1
+pyinstaller-hooks-contrib==2025.0
 pyparsing==3.2.0
 PyQt5==5.15.11
 PyQt5-Qt5==5.15.2
@@ -53,6 +57,7 @@ pyqtgraph==0.13.7
 pyriemann==0.7
 python-dateutil==2.9.0.post0
 pytz==2024.2
+pywin32-ctypes==0.2.3
 PyYAML==6.0.2
 requests==2.32.3
 scapy==2.6.1
