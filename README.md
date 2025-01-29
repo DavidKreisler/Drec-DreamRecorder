@@ -43,13 +43,13 @@ python mainconsole.py
 ```
 
 ## create .exe from scripts
-1. make sure the requirements are fulfilled
-2. make sure the virtualenv is activated
-3. navigate to /Drec-DreamRecorder/source_code/
-4. run following command:
+1. activate the virtualenv
+2. make sure the requirements are fulfilled: ```python -m pip install -r requirements.txt```
+4. navigate to /Drec-DreamRecorder/source_code/
+5. run following command:
 ```pyinstaller --onefile --collect-all mne --collect-all lazy_loader --collect-data lspopt mainconsole.py```
-5. a folder called 'dist' will be created, containing one file called 'mainconsole.exe'
-6. you can move mainconsole.exe wherever you want and do not need the python environment to be running
+6. a folder called 'dist' will be created, containing one file called 'mainconsole.exe'
+7. you can move mainconsole.exe wherever you want and do not need the python environment to be running
 
 ## usage
 make sure **HDServer** from hypnodyne is running. 
