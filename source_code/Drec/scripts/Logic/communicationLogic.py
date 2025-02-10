@@ -1,9 +1,13 @@
+import os
+import shutil
 import sys
 
 from PyQt5.QtWidgets import QApplication
 
 from scripts.UI.CLI import CLIThread
 from scripts.Logic.HBRecorderInterface import HBRecorderInterface
+
+from source_code.Drec.scripts.Utils.Logger import Logger
 
 
 class CommunicationLogic:
@@ -71,12 +75,20 @@ class CommunicationLogic:
                   'file an issue at the github repository.')
             return
 
-        self.hbif.quit()
+        save_dir = self.hbif.quit()
 
         self.cliThread.stop()
         self.cliThread.quit()
 
         self.app.quit()
+
+        # move the log file into the folder
+        Logger().close()
+        try:
+            shutil.move("log.log", f"{save_dir}/log.log")
+        except Exception as e:
+            print(f"{save_dir}/log.log")
+            print(e)
 
 
 

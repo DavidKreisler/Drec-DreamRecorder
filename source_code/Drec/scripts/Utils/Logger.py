@@ -1,4 +1,5 @@
 import logging
+import os.path
 
 
 class SingletonMeta(type):
@@ -27,21 +28,21 @@ class Logger(metaclass=SingletonMeta):
         self.logger.propagate = False
 
         # file handler
-        fh = logging.FileHandler(filename='log.log', encoding='utf-8')
-        fh.setLevel('DEBUG')
+        self.fh = logging.FileHandler(filename='log.log', encoding='utf-8')
+        self.fh.setLevel('DEBUG')
 
         # console handler
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.CRITICAL)
+        self.ch = logging.StreamHandler()
+        self.ch.setLevel(logging.CRITICAL)
 
         # create formatter and add it to the handlers
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(formatter)
-        ch.setFormatter(formatter)
+        self.fh.setFormatter(formatter)
+        self.ch.setFormatter(formatter)
 
         # add the handlers to the logger
-        self.logger.addHandler(fh)
-        self.logger.addHandler(ch)
+        self.logger.addHandler(self.fh)
+        self.logger.addHandler(self.ch)
 
         self.log_idx = 0
 
@@ -59,9 +60,14 @@ class Logger(metaclass=SingletonMeta):
             self.logger.critical(mes)
         self.log_idx += 1
 
+    def close(self):
+        """Close all handlers to release the log file."""
+        handlers = self.logger.handlers[:]  # Copy the list of handlers
+        for handler in handlers:
+            self.logger.removeHandler(handler)
+            handler.close()  # Close each handler properly
 
 if __name__ == '__main__':
-    import time
     message = 'example message'
     Logger().log(message, 'DEBUG')
     Logger().log(message, 'INFO')

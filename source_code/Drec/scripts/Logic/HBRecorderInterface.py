@@ -47,6 +47,8 @@ class HBRecorderInterface:
         self.webHookBaseAdress = "http://127.0.0.1:5000/webhookcallback/"
         self.webhookActive = False
 
+        self.save_dir = None
+
     def start_recording(self):
         if self.isRecording:
             return
@@ -105,7 +107,7 @@ class HBRecorderInterface:
             rem_lines = []
             for time, epoch, rem_by_staging, rem_by_eyes in self.rem_by_staging_and_eyes:
                 if rem_by_staging == 1 and rem_by_eyes == 1:
-                    rem_lines.append((epoch, epoch*30, 'REM detected'))
+                    rem_lines.append((epoch, epoch*30, time.strftime("%Y-%m-%d %H:%M:%S"), 'REM detected'))
 
             with open(os.path.join(filePath, "rem_markers.txt"), "a") as outfile:
                 outfile.write("\n".join(str(epoch) + ' - ' + str(seconds) + 's' + ' - ' + str(is_rem)
@@ -115,6 +117,7 @@ class HBRecorderInterface:
         if self.webhookActive:
             requests.post(self.webHookBaseAdress + 'finished')
 
+        self.save_dir = filePath
         Logger().log('finished saving data', 'info')
 
     def start_scoring(self):
@@ -210,4 +213,6 @@ class HBRecorderInterface:
 
         if self.recorderThread:
             self.stop_recording()
+
+        return self.save_dir
 
