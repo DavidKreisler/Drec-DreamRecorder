@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QApplication
 from scripts.UI.CLI import CLIThread
 from scripts.Logic.HBRecorderInterface import HBRecorderInterface
 
-from source_code.Drec.scripts.Utils.Logger import Logger
+from scripts.Utils.Logger import Logger
 
 
 class CommunicationLogic:
