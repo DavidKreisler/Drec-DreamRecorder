@@ -110,8 +110,8 @@ class HBRecorderInterface:
                     rem_lines.append((epoch, epoch*30, time.strftime("%Y-%m-%d %H:%M:%S"), 'REM detected'))
 
             with open(os.path.join(filePath, "rem_markers.txt"), "a") as outfile:
-                outfile.write("\n".join(str(epoch) + ' - ' + str(seconds) + 's' + ' - ' + str(is_rem)
-                                        for epoch, seconds, is_rem in rem_lines))
+                outfile.write("\n".join(str(epoch) + ' - ' + str(seconds) + 's' + ' - ' +  time + ' - ' + str(is_rem)
+                                        for epoch, seconds, time, is_rem in rem_lines))
 
         # send signal to webhook if it is running
         if self.webhookActive:
