@@ -43,7 +43,7 @@ class RecordThread(QThread):
         file_path = f".\\recordings\\{dt_string}"
 
         actual_start_time = time.time()
-        print(f'actual start time {actual_start_time}')
+        Logger().log((f'actual start time {actual_start_time}'), 'info')
 
         buffer = []
         buffer2analyzeIsReady = False
@@ -100,13 +100,6 @@ class RecordThread(QThread):
                 Logger().log('stopping headband', 'info')
                 hb.stop()
                 break
-
-        actual_end_time = time.time()
-        print(f'actual end time {actual_end_time}')
-        time_diff = actual_end_time - actual_start_time
-        minute = time_diff / 60
-        seconds = time_diff % 60
-        print(f"actual {minute} minute, {seconds} seconds")
 
         self.recordingFinishedSignal.emit(f"{file_path}")  # send path of recorded file to mainWindow
 

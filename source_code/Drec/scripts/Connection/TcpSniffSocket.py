@@ -70,8 +70,8 @@ class TcpSniffSocket:
                 rev_con = Connection(ip_layer.dst, tcp_layer.dport, ip_layer.src, tcp_layer.sport, None)
                 self.connections[reverse_conn_id] = rev_con
 
-                Logger().log(f"[INFO] New connection started: {conn_id}", 'info')
-                print(f"[INFO] New connection started: {conn_id}")
+                Logger().log(f"[CONNECTION] New connection started: {conn_id}", 'info')
+                print(f"[CONNECTION] New connection started: {conn_id}.")
 
             # handle payloads
             for id in [self.connections[key].get_id() for key in self.connections.keys()]:

@@ -69,7 +69,6 @@ class HBRecorderInterface:
         self.recordingFinished = False
 
         Logger().log(f'recording started', 'info')
-        print('recording started')
 
     def stop_recording(self):
         if not self.isRecording:
