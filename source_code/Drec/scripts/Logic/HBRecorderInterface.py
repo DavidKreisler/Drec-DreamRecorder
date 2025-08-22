@@ -13,6 +13,7 @@ from scripts.Utils.yasa_functions import YasaClassifier
 from scripts.Utils.Logger import Logger
 
 from scripts.Utils.EdfUtils import save_edf, save_as_txt
+from scripts.dreamento_original import realTimeAutoScoring
 
 
 class HBRecorderInterface:
@@ -36,6 +37,7 @@ class HBRecorderInterface:
         self.recordingFinished = True
 
         self.rem_by_staging_and_eyes = []
+        self.dreamento_scoring = []
         self.epochCounter = 0
 
         # program parameters
@@ -48,6 +50,9 @@ class HBRecorderInterface:
         self.webhookActive = False
 
         self.save_dir = None
+
+        self.scoring_model = 'both' # 'dreamento', 'yasa', 'both'
+        self.dreamento_model = realTimeAutoScoring.importModel('./out_QS/train/21')
 
     def start_recording(self):
         if self.isRecording:
@@ -112,6 +117,15 @@ class HBRecorderInterface:
                 outfile.write("\n".join(str(epoch) + ' - ' + str(seconds) + 's' + ' - ' +  time + ' - ' + str(is_rem)
                                         for epoch, seconds, time, is_rem in rem_lines))
 
+        if self.dreamento_scoring:
+            outfile_content = []
+            stagesList = ['W', 'N1', 'N2', 'N3', 'REM', 'MOVE', 'UNK'] # taken from original repository
+            for line in self.dreamento_scoring:
+                outfile_content.append((line['epoch'], stagesList[line['pred']]))
+
+            with open(os.path.join(filePath, 'dreamento_scoring.txt'), 'a') as outfile:
+                outfile.writelines('\n'.join(str(epoch) + ' - ' + str(pred) for epoch, pred in outfile_content))
+
         # send signal to webhook if it is running
         if self.webhookActive:
             requests.post(self.webHookBaseAdress + 'finished')
@@ -132,21 +146,39 @@ class HBRecorderInterface:
         Logger().log('getting epoch data', 'DEBUG')
         self.recording = np.concatenate((self.recording, data), axis=0)
 
-        if self.scoreSleep and epoch_counter > self.scoring_delay_in_epochs:
+        if self.scoreSleep: # and epoch_counter > self.scoring_delay_in_epochs:
             Logger().log(f'scoring data', 'Debug')
-            self._score_curr_data(epoch_counter)
+            self._score_curr_data(epoch_counter, self.recording[:, 0], self.recording[:, 1])
 
         if self.webhookActive:  # Do this AFTER the scoring is done
             self._send_to_webhook()
 
-    def _score_curr_data(self, epoch_counter):
-        eegr = self.recording[:, 0]
-        eegl = self.recording[:, 1]
+    def _score_with_dreamento(self, epoch_counter, eegr, eegl):
+        """
+        dreamento model scoring
+        eegr and eegl are expected to contain 30*256 elements each
+        """
+        sigRef = np.asarray(eegr)
+        sigReq = np.asarray(eegl)
+        sigRef = sigRef.reshape((1, sigRef.shape[0]))
+        sigReq = sigReq.reshape((1, sigReq.shape[0]))
+        modelPrediction = realTimeAutoScoring.Predict_array(
+            output_dir="./DataiBand/output/Fp1-Fp2_filtered",
+            args_log_file="info_ch_extract.log", filtering_status=True,
+            lowcut=0.3, highcut=30, fs=256, signal_req=sigReq, signal_ref=sigRef, model=self.dreamento_model)
+
+        self.dreamento_scoring.append({'pred': int(modelPrediction[0]), 'epoch': epoch_counter})
+
+    def _score_pure_yasa(self, epoch_counter, eegr, eegl):
+        """
+        eegr and eegl are expected to contain at least 5 min worth of data (10*30*256)
+        """
+        # pure yasa scoring
         info = mne.create_info(ch_names=['eegr', 'eegl'], sfreq=self.sample_rate, ch_types='eeg', verbose='ERROR')
         mne_array = mne.io.RawArray([eegr, eegl], info, verbose='ERROR')
 
         data = YasaClassifier.get_rem_bin_per_epoch(mne_array, 256, ['eegr', 'eegl'])
-        #data = YasaClassifier.get_power_bands_and_ground_truth_per_epoch(mne_array, 256, ['eegr', 'eegl'])
+        # data = YasaClassifier.get_power_bands_and_ground_truth_per_epoch(mne_array, 256, ['eegr', 'eegl'])
 
         pred_by_all = list(data['rem_by_all'])[-1]
         pred_by_scoring = list(data['rem_by_prediction'])[-1]
@@ -155,6 +187,22 @@ class HBRecorderInterface:
                                              epoch_counter,
                                              pred_by_scoring,
                                              pred_by_eyes))
+
+    def _score_curr_data(self, epoch_counter, eegr, eegl):
+        sigR = eegr[-30 * 256:]
+        sigL = eegl[-30 * 256:]
+
+        if self.scoring_model == 'yasa' or self.scoring_model == 'both':
+            if epoch_counter > self.scoring_delay_in_epochs:
+                self._score_pure_yasa(epoch_counter, eegr, eegl)
+
+        if self.scoring_model == 'dreamento' or self.scoring_model == 'both':
+            self._score_with_dreamento(epoch_counter, sigR, sigL)
+
+
+
+
+
 
     def _send_to_webhook(self):
         if len(self.rem_by_staging_and_eyes) <= 0:

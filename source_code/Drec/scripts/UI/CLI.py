@@ -40,7 +40,6 @@ class SleepRecorderCLI(cmd.Cmd, QObject):
     def stop(self):
         """Stop the CLI"""""
         self._is_running = False
-        return True
 
     def do_quit(self, line):
         """Exit the CLI."""
@@ -53,7 +52,7 @@ class SleepRecorderCLI(cmd.Cmd, QObject):
         self.start_signal.emit(True)
         self.start_scoring_signal.emit(True)
         self.start_webhook_signal.emit(True)
-        info_message = 'Waiting for new tcp connection.\nStart the recording by connecting the HDRecorder to the HDServer. \nThe recording is running when you see a [CONNECTED] message.'
+        info_message = 'Waiting for new tcp connection.\nStart the recording by connecting the HDRecorder to the HDServer. \nThe recording is running when you see a [CONNECTION] message.'
         print(info_message)
 
     def do_stop(self, line):

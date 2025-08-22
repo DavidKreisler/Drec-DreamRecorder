@@ -16,7 +16,7 @@ class HD_Server_Sim:
 
         # Global variables for EEG data
         self.eeg_data = None
-        self.sampling_rate = 256  # Hz
+        self.sampling_rate = 1024 # 256 Hz # CHANGE SF FOR FASTER TRANSMITION
         self.current_sample = 0  # Pointer to track the current sample being streamed
         self.streaming = False
 
@@ -37,6 +37,7 @@ class HD_Server_Sim:
 
     def stream_data(self):
         """Streams 256 samples per second to simulate real-time EEG recording."""
+        # CHANGE self.sampling_rate to 1024 FOR FASTER TRANSMITION #
         n_samples = self.eeg_data.shape[1]  # Total number of samples per channel
         chunk_size = 1  # Number of samples to send per second
         interval = chunk_size / self.sampling_rate  # Send chunks every second
@@ -64,13 +65,8 @@ class HD_Server_Sim:
                     accumulated_message += signal_to_hex(sigl, sigr) + '\r\n'
 
                 self.broadcast_data(accumulated_message)
-                #print(accumulated_message)
-
-                # Print debug message to check if streaming continues
-                #print(f"[STREAMING] Sent samples {start} to {self.current_sample}")
 
             else:
-                # print("[INFO] Waiting for clients...")
                 time.sleep(1)
 
             time.sleep(interval)  # Wait for 1 second before sending the next chunk
