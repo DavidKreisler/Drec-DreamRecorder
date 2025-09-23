@@ -24,7 +24,7 @@ all the following steps describe the procedure for the windows operating system.
 
 2. create a virtual env (in cmd):
 ```python -m venv /path/to/wherever/you/want/it/to/live/```.
-if multiple python versions are installed a specific can be used py typing
+if multiple python versions are installed a specific can be used by typing
 ```python -3.11```
 
 4. activate the venv:
@@ -54,11 +54,4 @@ python mainconsole.py
 
 ## usage
 make sure **HDServer** from hypnodyne is running. 
-
-## TODO:
-- [ ] implement 'offline' version, that allows to score previous recordings
-- [ ] when saving save the metadata, e.g. what signals are recorded. This is a program setting, therefore relevant
-- [ ] bugfixes
-  - [ ] the window opened with show_signal can crashes the app when moved or resized incorrectly
-  - [ ] when terminating the program after show_signal was called the program gets stuck. probably has to do with threads -> solution: remove show_signal
 
