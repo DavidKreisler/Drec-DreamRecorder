@@ -13,6 +13,7 @@ It has developed into a standalone project for **eeg recording** of the signal c
   - pyqtgraph-0.13.7
   - torch==2.5.1
   - yasa==0.6.5
+  - tensorflow
 
  We did not specifically 'opt for' these versions, they were just the current ones when implementing. May work with future versions of these libraries.
 
