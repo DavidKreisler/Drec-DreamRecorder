@@ -14,6 +14,8 @@ It has developed into a standalone project for **eeg recording** of the signal c
   - torch==2.5.1
   - yasa==0.6.5
   - tensorflow
+- others:
+  - Microsoft Visual C++ Redistributable (https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
  We did not specifically 'opt for' these versions, they were just the current ones when implementing. May work with future versions of these libraries.
 
