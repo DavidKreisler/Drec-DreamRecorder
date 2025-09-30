@@ -31,8 +31,8 @@ import time
 import os
 import numpy as np
 import scipy.signal as ssignal
-from source_code.Drec.scripts.dreamento_original.model_tf2 import TinySleepNet
-from source_code.Drec.scripts.dreamento_original.minibatching import (iterate_minibatches,
+from scripts.dreamento_original.model_tf2 import TinySleepNet
+from scripts.dreamento_original.minibatching import (iterate_minibatches,
                                                                       iterate_batch_seq_minibatches,
                                                                       iterate_batch_multiple_seq_minibatches)
 # from logger import get_logger

@@ -7,8 +7,8 @@ import timeit
 import tensorflow.keras.metrics as contrib_metrics
 import tf_slim as contrib_slim
 
-from source_code.Drec.scripts.dreamento_original.aggregate_metric_map import aggregate_metric_map
-import source_code.Drec.scripts.dreamento_original.nn_tf2 as nn
+from scripts.dreamento_original.aggregate_metric_map import aggregate_metric_map
+import scripts.dreamento_original.nn_tf2 as nn
 
 import logging
 logger = logging.getLogger("default_log")
