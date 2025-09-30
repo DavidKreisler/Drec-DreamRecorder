@@ -13,6 +13,9 @@ It has developed into a standalone project for **eeg recording** of the signal c
   - pyqtgraph-0.13.7
   - torch==2.5.1
   - yasa==0.6.5
+  - tensorflow
+- others:
+  - Microsoft Visual C++ Redistributable (https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
  We did not specifically 'opt for' these versions, they were just the current ones when implementing. May work with future versions of these libraries.
 
@@ -23,7 +26,7 @@ all the following steps describe the procedure for the windows operating system.
 
 2. create a virtual env (in cmd):
 ```python -m venv /path/to/wherever/you/want/it/to/live/```.
-if multiple python versions are installed a specific can be used py typing
+if multiple python versions are installed a specific can be used by typing
 ```python -3.11```
 
 4. activate the venv:
@@ -53,11 +56,4 @@ python mainconsole.py
 
 ## usage
 make sure **HDServer** from hypnodyne is running. 
-
-## TODO:
-- [ ] implement 'offline' version, that allows to score previous recordings
-- [ ] when saving save the metadata, e.g. what signals are recorded. This is a program setting, therefore relevant
-- [ ] bugfixes
-  - [ ] the window opened with show_signal can crashes the app when moved or resized incorrectly
-  - [ ] when terminating the program after show_signal was called the program gets stuck. probably has to do with threads -> solution: remove show_signal
 
