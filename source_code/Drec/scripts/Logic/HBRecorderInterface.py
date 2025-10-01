@@ -52,7 +52,7 @@ class HBRecorderInterface:
         self.save_dir = None
 
         self.scoring_model = 'both' # 'dreamento', 'yasa', 'both'
-        self.dreamento_model = realTimeAutoScoring.importModel('./out_QS/train/21')
+        self.dreamento_model = realTimeAutoScoring.importModel('out_QS/train/21')
 
     def start_recording(self):
         if self.isRecording:

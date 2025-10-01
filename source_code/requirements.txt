@@ -98,7 +98,7 @@ tensorpac==0.6.5
 termcolor==2.4.0
 tf-slim==1.1.0
 threadpoolctl==3.5.0
-torch==2.4.1
+torch==2.0.1
 tqdm==4.67.1
 traitlets==5.14.3
 typing_extensions==4.5.0

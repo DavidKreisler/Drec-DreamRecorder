@@ -27,7 +27,7 @@ class TinySleepNet(object):
         self.config = config
         self.output_dir = output_dir
         self.checkpoint_path = os.path.join(self.output_dir, "checkpoint")
-        self.best_ckpt_path = os.path.join(self.output_dir, "best_ckpt")
+        self.best_ckpt_path = os.path.join(self.output_dir, "checkpoint")
         self.weights_path = os.path.join(self.output_dir, "weights")
         self.log_dir = os.path.join(self.output_dir, "log")
         self.use_rnn = use_rnn
@@ -201,15 +201,15 @@ class TinySleepNet(object):
         is_restore = False
         if use_best:
             if os.path.exists(self.best_ckpt_path):
-                if os.path.isfile(os.path.join(self.best_ckpt_path, "checkpoint")):
+                if os.path.isfile(os.path.join(self.best_ckpt_path, "nest_ckpt")):
                     # Restore the last checkpoint
                     latest_checkpoint = tf.train.latest_checkpoint(self.best_ckpt_path)
                     self.saver.restore(self.sess, latest_checkpoint)
                     logger.info("Best model restored from {}".format(latest_checkpoint))
                     is_restore = True
         else:
-            if os.path.exists(self.checkpoint_path):
-                if os.path.isfile(os.path.join(self.checkpoint_path, "checkpoint")):
+            if os.path.exists(os.path.join(os.getcwd(), self.checkpoint_path)):
+                if os.path.isfile(os.path.join(os.getcwd(), self.checkpoint_path, "checkpoint")):
                     # Restore the last checkpoint
                     latest_checkpoint = tf.train.latest_checkpoint(self.checkpoint_path)
                     self.saver.restore(self.sess, latest_checkpoint)
