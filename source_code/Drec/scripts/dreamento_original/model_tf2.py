@@ -27,7 +27,7 @@ class TinySleepNet(object):
         self.config = config
         self.output_dir = output_dir
         self.checkpoint_path = os.path.join(self.output_dir, "checkpoint")
-        self.best_ckpt_path = os.path.join(self.output_dir, "checkpoint")
+        self.best_ckpt_path = os.path.join(self.output_dir, "best_ckpt")
         self.weights_path = os.path.join(self.output_dir, "weights")
         self.log_dir = os.path.join(self.output_dir, "log")
         self.use_rnn = use_rnn
@@ -201,11 +201,12 @@ class TinySleepNet(object):
         is_restore = False
         if use_best:
             if os.path.exists(self.best_ckpt_path):
-                if os.path.isfile(os.path.join(self.best_ckpt_path, "nest_ckpt")):
+                if os.path.isfile(os.path.join(self.best_ckpt_path, "checkpoint")):
                     # Restore the last checkpoint
                     latest_checkpoint = tf.train.latest_checkpoint(self.best_ckpt_path)
                     self.saver.restore(self.sess, latest_checkpoint)
                     logger.info("Best model restored from {}".format(latest_checkpoint))
+                    print("Best model restored from {}".format(latest_checkpoint))
                     is_restore = True
         else:
             if os.path.exists(os.path.join(os.getcwd(), self.checkpoint_path)):
@@ -214,9 +215,11 @@ class TinySleepNet(object):
                     latest_checkpoint = tf.train.latest_checkpoint(self.checkpoint_path)
                     self.saver.restore(self.sess, latest_checkpoint)
                     logger.info("Model restored from {}".format(latest_checkpoint))
+                    print("Model restored from {}".format(latest_checkpoint))
                     is_restore = True
         if not is_restore:
             logger.info("Model started from random weights")
+            print("Model started from random weights")
 
     def build_cnn(self):
         first_filter_size = int(self.config["sampling_rate"] / 2.0)

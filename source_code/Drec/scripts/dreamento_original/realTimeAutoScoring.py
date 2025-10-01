@@ -79,7 +79,6 @@ def importModel(best_model_dir="./out_QS/train/4"):
     global config
     # Add dummy class weights
     config["class_weights"] = np.ones(config["n_classes"], dtype=np.float32)
-    print(os.path.join(best_model_dir))
     model = TinySleepNet(
         config=config,
         output_dir=os.path.join(best_model_dir),
