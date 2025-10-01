@@ -4,18 +4,9 @@ This repository was originally based on dreamento (accessed from https://github.
 It has developed into a standalone project for **eeg recording** of the signal captured by a ZMax Headband (by Hypnodyne) and **scoring** the eeg signal using the **yasa** library. Additionally the option to send the scoring to a separate **webhook** is implemented, to allow to control external (audio, visual, ...) impulses or applications.
 
 ## requirements
-- python 3.11
+- python 3.8
 - libraries:
-  - Flask==3.1.0
-  - mne==0.23.4
-  - pyEDFlib==0.1.38
-  - PyQt5==5.15.11
-  - pyqtgraph-0.13.7
-  - torch==2.5.1
-  - yasa==0.6.5
-  - tensorflow
-- others:
-  - Microsoft Visual C++ Redistributable (https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+  - see requirements.txt
 
  We did not specifically 'opt for' these versions, they were just the current ones when implementing. May work with future versions of these libraries.
 
