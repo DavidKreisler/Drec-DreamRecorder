@@ -33,7 +33,7 @@ class Logger(metaclass=SingletonMeta):
 
         # console handler
         self.ch = logging.StreamHandler()
-        self.ch.setLevel(logging.CRITICAL)
+        self.ch.setLevel(logging.ERROR)
 
         # create formatter and add it to the handlers
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

@@ -9,16 +9,19 @@ app = Flask(__name__)
 @app.route('/webhookcallback/sleepstate', methods=['POST'])
 def sleepStateHook():
     global stateStore
-    rem_by_staging_and_eyes = request.values.get('rem_by_staging_and_eyes')
-    rem_by_powerbands = request.values.get('rem_by_powerbands')
     time = request.values.get('time')
     epoch = request.values.get('epoch')
+    rem_by_scoring = request.values.get('rem_by_scoring')
+    rem_by_eyes = request.values.get('rem_by_eyes')
+    scoring_dreamento = request.values.get('scoring_dreamento')
+    epoch_dreamento = request.values.get('epoch_dreamento')
 
-    stateStore.append((time, epoch, rem_by_staging_and_eyes, rem_by_powerbands))
+    stateStore.append((time, epoch, rem_by_scoring, rem_by_eyes, scoring_dreamento, epoch_dreamento))
 
-    print(f'rem_by_staging_and_eyes: {rem_by_staging_and_eyes}')
-    print(f'rem_by_powerbands: {rem_by_powerbands}')
-    print('epoch: ' + str(epoch))
+    print(f'rem_by_scoring: {rem_by_scoring}')
+    print(f'rem_by_eyes: {rem_by_eyes}')
+    print(f'scoring_dreamento: {scoring_dreamento}')
+    print('epoch / dreamento epoch: ' + str(epoch), str(epoch_dreamento))
 
     return "received"
 
@@ -43,4 +46,4 @@ def recordingFinishedHook():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host="127.0.0.2", port=5000)

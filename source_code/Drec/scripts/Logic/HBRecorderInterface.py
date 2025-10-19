@@ -46,7 +46,7 @@ class HBRecorderInterface:
         self.best_scoring_metric = None
 
         # webhook
-        self.webHookBaseAdress = "http://127.0.0.1:5000/webhookcallback/"
+        self.webHookBaseAdress = "http://127.0.0.2:5000/webhookcallback/"
         self.webhookActive = False
 
         self.save_dir = None
@@ -199,26 +199,32 @@ class HBRecorderInterface:
         if self.scoring_model == 'dreamento' or self.scoring_model == 'both':
             self._score_with_dreamento(epoch_counter, sigR, sigL)
 
-
-
-
-
-
     def _send_to_webhook(self):
-        if len(self.rem_by_staging_and_eyes) <= 0:
+        if len(self.rem_by_staging_and_eyes) <= 0 and len(self.dreamento_scoring) <= 0:
             return
         rem_by_scoring = 'None'
         rem_by_eyes = 'None'
         time = 'None'
         epoch = 'None'
+        scoring_dreamento = 'None'
+        epoch_dreamento = 'None'
 
         if len(self.rem_by_staging_and_eyes) > 0:
             time, epoch, rem_by_scoring, rem_by_eyes = self.rem_by_staging_and_eyes[-1]
 
-        data = {'rem_by_staging': rem_by_scoring,
+        if len(self.dreamento_scoring) > 0:
+            stagesList = ['W', 'N1', 'N2', 'N3', 'REM', 'MOVE', 'UNK']
+            dreamento_data = self.dreamento_scoring[-1]
+            epoch_dreamento = dreamento_data['epoch']
+            scoring_dreamento = stagesList[dreamento_data['pred']]
+
+        data = {'rem_by_scoring': rem_by_scoring,
                 'rem_by_eyes': rem_by_eyes,
+                'scoring_dreamento': scoring_dreamento,
                 'time': time,
-                'epoch': epoch}
+                'epoch': epoch,
+                'epoch_dreamento': epoch_dreamento
+                }
         try:
             requests.post(self.webHookBaseAdress + 'sleepstate', data=data)
         except Exception as e:
@@ -235,11 +241,11 @@ class HBRecorderInterface:
             Logger().log('webhook seems to be offline. not activating', 'warning')
             self.webhookActive = False
             return
-        Logger.log(f'webhook started', 'info')
+        Logger().log(f'webhook started', 'info')
 
     def stop_webhook(self):
         self.webhookActive = False
-        Logger.log(f'webhook stopped', 'info')
+        Logger().log(f'webhook stopped', 'info')
 
     def set_signaltype(self, types=None):
         if self.isRecording:
