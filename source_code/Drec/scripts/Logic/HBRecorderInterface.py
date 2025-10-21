@@ -46,7 +46,7 @@ class HBRecorderInterface:
         self.best_scoring_metric = None
 
         # webhook
-        self.webHookBaseAdress = "http://127.0.0.2:5000/webhookcallback/"
+        self.webHookBaseAdress = "http://127.0.0.1:5000/webhookcallback/"
         self.webhookActive = False
 
         self.save_dir = None
