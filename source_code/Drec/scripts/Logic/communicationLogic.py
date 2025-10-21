@@ -24,6 +24,10 @@ class CommunicationLogic:
 
         self.app.exec_()
 
+        self.startScoring()
+        self.startWebhook()
+        self.startRecording()
+
     def _connectSignals(self):
         # CLI
         self.cliThread.cli.start_signal.connect(self.startRecording)
