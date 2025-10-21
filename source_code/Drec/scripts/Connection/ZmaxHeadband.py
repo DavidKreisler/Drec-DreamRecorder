@@ -87,9 +87,11 @@ class ZmaxHeadband():
                 p = line.split('.')
                 if len(p) == 2:
                     line = p[1]
+                    line = line.replace('/r', '')
+                    line = line.replace('/n', '')
                     packet_type = self.getbyteat(line, 0)
                     if (packet_type >= 1) and (packet_type <= 11):  # packet type within correct range
-                        if len(line) == 120: #119
+                        if len(line) == 120 or len(line) == 119:
                             # EEG channels
                             eegr = self.getwordat(line, 1)
                             eegl = self.getwordat(line, 3)
@@ -123,6 +125,8 @@ class ZmaxHeadband():
                             for i in reqIDs:
                                 vals.append(result[i])
                             reqVals.append(vals)
+                        else:
+                            Logger().log(f'line length of 119 or 120 expected in ZmaxHeadband.read. line length is: {len(line)}, line is: {line}', 'WARNING')
             else:
                 Logger().log(f'data in unexpected format received. not processing: {line}', 'warning')
 

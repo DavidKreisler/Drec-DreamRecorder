@@ -82,7 +82,7 @@ class RecordThread(QThread):
                                     self.epochCounter += 1
 
                 else:
-                    Logger().log('No data at hb.read()', 'INFO')
+                    Logger().log('No data at hb.read()', 'DEBUG')
                     continue
 
             if buffer2analyzeIsReady:

@@ -1,3 +1,4 @@
+import os
 import socket
 import threading
 import time
@@ -62,7 +63,7 @@ class HD_Server_Sim:
                 for idx in range(0, len(chunk[0])):
                     sigl = chunk[0][idx]
                     sigr = chunk[1][idx]
-                    accumulated_message += signal_to_hex(sigl, sigr) + '\r\n'
+                    accumulated_message += signal_to_hex(sigl, sigr) + '/r/n'
 
                 self.broadcast_data(accumulated_message)
 
@@ -159,8 +160,8 @@ class HD_Server_Sim:
             return
         try:
             # Load the EDF file
-            edf_file_path_L = f'{file_path}EEG L.edf'  # Replace with your EDF file path
-            edf_file_path_R = f'{file_path}EEG R.edf'  # Replace with your EDF file path
+            edf_file_path_L = os.path.join(file_path, 'EEG L.edf')  # Replace with your EDF file path
+            edf_file_path_R = os.path.join(file_path,'EEG R.edf')  # Replace with your EDF file path
             x = f'{file_path}'
             raw_eegl = mne.io.read_raw_edf(edf_file_path_L, preload=True)
             raw_eegr = mne.io.read_raw_edf(edf_file_path_R, preload=True)
@@ -178,7 +179,7 @@ class HD_Server_Sim:
 if __name__ == "__main__":
 
     server = HD_Server_Sim()
-    server.load_edf('path/to/recording/folder/') # like C:/Drec/recordings/2024 12 9 - 21 52 57/2024 12 9 - 21 52 57/
+    server.load_edf('E:/coding/git/Drec-DreamRecorder/source_code/Drec/recordings/2024 11 27 - 21 39 27/2024 11 27 - 21 39 27') # like C:/Drec/recordings/2024 12 9 - 21 52 57/2024 12 9 - 21 52 57/
                                                  # ein zmax recording von einer deiner naechte
 
     # Start the server

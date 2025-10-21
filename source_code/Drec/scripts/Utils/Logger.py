@@ -23,7 +23,7 @@ class Logger(metaclass=SingletonMeta):
         #    logging.root.removeHandler(handler)
 
         self.logger = logging.getLogger('Drec')
-        self.logger.setLevel('DEBUG')
+        self.logger.setLevel('WARNING')
 
         self.logger.propagate = False
 

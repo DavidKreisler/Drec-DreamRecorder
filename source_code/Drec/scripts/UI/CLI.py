@@ -1,19 +1,22 @@
 import cmd
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
+from flask import Flask, request, jsonify
+from werkzeug.serving import make_server
 
 from scripts.Utils.Logger import Logger
 
+### CLI ###
 
 class CLIThread(QThread):
     def __init__(self):
         super().__init__()
-        self.cli = SleepRecorderCLI()
+        self.comm_if = SleepRecorderCLI()
 
     def run(self):
-        self.cli.cmdloop()
+        self.comm_if.cmdloop()
 
     def stop(self):
-        self.cli.stop()
+        self.comm_if.stop()
         self.quit()
 
 
@@ -101,4 +104,9 @@ class SleepRecorderCLI(cmd.Cmd, QObject):
             self.set_scoring_delay_signal.emit(val)
         except ValueError:
             print(f'please provide a numer. "{line}" was not interpretable as integer.')
+
+
+
+
+
 

@@ -9,36 +9,35 @@ from scripts.Logic.HBRecorderInterface import HBRecorderInterface
 
 from scripts.Utils.Logger import Logger
 
+from source_code.Drec.scripts.UI.CLI import FlaskThread
+
 
 class CommunicationLogic:
     def __init__(self):
         self.app = QApplication(sys.argv)
 
-        self.cliThread = CLIThread()
+        self.comm = FlaskThread() #CLIThread()
+
         self.hbif = HBRecorderInterface()
 
     def start(self):
-        self.cliThread.start()
+        self.comm.start()
 
         self._connectSignals()
 
         self.app.exec_()
 
-        self.startScoring()
-        self.startWebhook()
-        self.startRecording()
-
     def _connectSignals(self):
         # CLI
-        self.cliThread.cli.start_signal.connect(self.startRecording)
-        self.cliThread.cli.stop_signal.connect(self.stopRecording)
-        self.cliThread.cli.start_scoring_signal.connect(self.startScoring)
-        self.cliThread.cli.stop_scoring_signal.connect(self.stopScoring)
-        self.cliThread.cli.start_webhook_signal.connect(self.startWebhook)
-        self.cliThread.cli.stop_webhook_signal.connect(self.stopWebhook)
-        self.cliThread.cli.set_signaltype_signal.connect(self.setSignaltype)
-        self.cliThread.cli.set_scoring_delay_signal.connect(self.setScoringDelay)
-        self.cliThread.cli.quit_signal.connect(self.quit)
+        self.comm.comm_if.start_signal.connect(self.startRecording)
+        self.comm.comm_if.stop_signal.connect(self.stopRecording)
+        self.comm.comm_if.start_scoring_signal.connect(self.startScoring)
+        self.comm.comm_if.stop_scoring_signal.connect(self.stopScoring)
+        self.comm.comm_if.start_webhook_signal.connect(self.startWebhook)
+        self.comm.comm_if.stop_webhook_signal.connect(self.stopWebhook)
+        self.comm.comm_if.set_signaltype_signal.connect(self.setSignaltype)
+        self.comm.comm_if.set_scoring_delay_signal.connect(self.setScoringDelay)
+        self.comm.comm_if.quit_signal.connect(self.quit)
 
     def startRecording(self):
         self.hbif.start_recording()
@@ -81,8 +80,8 @@ class CommunicationLogic:
 
         save_dir = self.hbif.quit()
 
-        self.cliThread.stop()
-        self.cliThread.quit()
+        self.comm.stop()
+        self.comm.quit()
 
         self.app.quit()
 
