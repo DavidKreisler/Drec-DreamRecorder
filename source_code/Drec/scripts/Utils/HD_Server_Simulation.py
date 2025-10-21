@@ -152,8 +152,11 @@ class HD_Server_Sim:
         combined_raw = mne.io.RawArray(combined_data, combined_info)
         return combined_raw
 
-    def load_edf(self, file_path='C:/coding/git/dreamento/dreamento-online/source_code/Drec/recordings/2024 12 9 - 21 52 57/2024 12 9 - 21 52 57/'):
+    def load_edf(self, file_path=None):
         """Loads an EDF file using MNE and extracts EEG data."""
+        if file_path is None:
+            print('No path specified! No EDF file is loaded. Bradcasting will not be possible.')
+            return
         try:
             # Load the EDF file
             edf_file_path_L = f'{file_path}EEG L.edf'  # Replace with your EDF file path
@@ -175,7 +178,8 @@ class HD_Server_Sim:
 if __name__ == "__main__":
 
     server = HD_Server_Sim()
-    server.load_edf('E:/coding/git/Drec-DreamRecorder/source_code/Drec/recordings/2024 11 27 - 21 39 27/2024 11 27 - 21 39 27/')
+    server.load_edf('path/to/recording/folder/') # like C:/Drec/recordings/2024 12 9 - 21 52 57/2024 12 9 - 21 52 57/
+                                                 # ein zmax recording von einer deiner naechte
 
     # Start the server
     server.start_server()
