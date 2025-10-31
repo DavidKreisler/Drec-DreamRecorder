@@ -23,6 +23,8 @@ def main():
     logic = CommunicationLogic()
     logic.start()
 
+    # ToDo: add endpoints to get current state
+
 
 if __name__ == '__main__':
     main()

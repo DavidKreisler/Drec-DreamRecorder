@@ -261,6 +261,14 @@ class HBRecorderInterface:
         delay_in_epochs = max(delay_in_epochs, 10)
         self.scoring_delay_in_epochs = delay_in_epochs
 
+    def set_webhook_ip(self, ip: str):
+        # ToDo: check for validity of IP address
+        self.webHookBaseAdress = ip
+
+        if self.webhookActive:
+            self.stop_webhook()
+            self.start_webhook()
+
     def quit(self):
         Logger().log('Quit called', 'info')
 

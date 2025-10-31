@@ -37,6 +37,7 @@ class CommunicationLogic:
         self.comm.comm_if.stop_webhook_signal.connect(self.stopWebhook)
         self.comm.comm_if.set_signaltype_signal.connect(self.setSignaltype)
         self.comm.comm_if.set_scoring_delay_signal.connect(self.setScoringDelay)
+        self.comm.comm_if.set_webhookip_signal.connect(self.setWebhookIp)
         self.comm.comm_if.quit_signal.connect(self.quit)
 
     def startRecording(self):
@@ -62,6 +63,9 @@ class CommunicationLogic:
 
     def setScoringDelay(self, delay_in_epochs: int):
         self.hbif.set_scoring_delay(delay_in_epochs)
+
+    def setWebhookIp(self, ip: str):
+        self.hbif.set_webhook_ip(ip)
 
     def quit(self, _: bool):
 

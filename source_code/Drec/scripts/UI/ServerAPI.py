@@ -16,6 +16,7 @@ class SleepRecorderAPI(QObject):
     stop_webhook_signal = pyqtSignal(bool)
     set_signaltype_signal = pyqtSignal(list)
     set_scoring_delay_signal = pyqtSignal(int)
+    set_webhookip_signal = pyqtSignal(str)
     quit_signal = pyqtSignal(bool)
 
     def __init__(self):
@@ -70,6 +71,10 @@ class SleepRecorderAPI(QObject):
             return {"message": f"Scoring delay set to {val} epochs."}
         except ValueError:
             return {"error": f'"{delay}" is not a valid integer.'}, 400
+
+    def set_webhook_ip(self, ip):
+        self.set_webhookip_signal.emit(ip)
+        raise NotImplemented
 
     def quit(self):
         Logger().log("Quit signal emitted", 'INFO')
@@ -133,6 +138,12 @@ class FlaskApp:
             data = request.json or {}
             delay = data.get("delay")
             return jsonify(api.set_scoring_delay(delay))
+
+        @app.route("/websocket_ip", methods=["POST"])
+        def set_websocket_ip():
+            data = request.json or {}
+            ip = data.get("ip")
+            return jsonify(api.set_webhook_ip(ip))
 
         @app.route("/quit", methods=["POST"])
         def quit():
