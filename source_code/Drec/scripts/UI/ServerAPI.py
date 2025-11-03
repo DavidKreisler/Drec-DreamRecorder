@@ -74,7 +74,7 @@ class SleepRecorderAPI(QObject):
 
     def set_webhook_ip(self, ip):
         self.set_webhookip_signal.emit(ip)
-        raise NotImplemented
+        return {'message': 'Webhook ip changed'}
 
     def quit(self):
         Logger().log("Quit signal emitted", 'INFO')

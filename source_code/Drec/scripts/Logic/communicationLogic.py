@@ -9,7 +9,7 @@ from scripts.Logic.HBRecorderInterface import HBRecorderInterface
 
 from scripts.Utils.Logger import Logger
 
-from source_code.Drec.scripts.UI.CLI import FlaskThread
+from scripts.UI.ServerAPI import FlaskThread
 
 
 class CommunicationLogic:
