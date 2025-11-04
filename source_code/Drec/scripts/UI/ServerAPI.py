@@ -1,3 +1,5 @@
+from typing import List
+
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from flask import Flask, request, jsonify
 from werkzeug.serving import make_server
@@ -72,8 +74,8 @@ class SleepRecorderAPI(QObject):
         except ValueError:
             return {"error": f'"{delay}" is not a valid integer.'}, 400
 
-    def set_webhook_ip(self, ip):
-        self.set_webhookip_signal.emit(ip)
+    def set_webhook_ip(self, address):
+        self.set_webhookip_signal.emit(address)
         return {'message': 'Webhook ip changed'}
 
     def quit(self):

@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+from typing import List
 
 from PyQt5.QtWidgets import QApplication
 
@@ -13,11 +14,15 @@ from scripts.UI.ServerAPI import FlaskThread
 
 
 class CommunicationLogic:
-    def __init__(self):
+    def __init__(self, mode: str = 'cli'):
         self.app = QApplication(sys.argv)
 
-        self.comm = FlaskThread()
-        # self.comm = CLIThread()
+        if mode == 'server':
+            self.comm = FlaskThread()
+        elif mode == 'cli':
+            self.comm = CLIThread()
+        else:
+            raise Exception(f'mode can only be "cli" or "server". received {mode}')
 
         self.hbif = HBRecorderInterface()
 
@@ -65,8 +70,8 @@ class CommunicationLogic:
     def setScoringDelay(self, delay_in_epochs: int):
         self.hbif.set_scoring_delay(delay_in_epochs)
 
-    def setWebhookIp(self, ip: str):
-        self.hbif.set_webhook_ip(ip)
+    def setWebhookIp(self, address: str):
+        self.hbif.set_webhook_ip(address)
 
     def quit(self, _: bool):
 

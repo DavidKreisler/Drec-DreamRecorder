@@ -128,10 +128,13 @@ class HBRecorderInterface:
 
         # send signal to webhook if it is running
         if self.webhookActive:
-            requests.post(self.webHookBaseAdress + 'finished')
+            requests.post(self.build_webhook_address() + 'finished')
 
         self.save_dir = filePath
         Logger().log('finished saving data', 'info')
+
+    def build_webhook_address(self):
+        return self.webHookBaseAdress
 
     def start_scoring(self):
         self.scoreSleep = True
@@ -202,16 +205,16 @@ class HBRecorderInterface:
     def _send_to_webhook(self):
         if len(self.rem_by_staging_and_eyes) <= 0 and len(self.dreamento_scoring) <= 0:
             return
-        rem_by_scoring = 'None'
-        rem_by_eyes = 'None'
-        time = 'None'
-        epoch = 'None'
+        # rem_by_scoring = 'None'
+        # rem_by_eyes = 'None'
+        # time = 'None'
+        # epoch = 'None'
         scoring_dreamento = 'None'
         epoch_dreamento = 'None'
         time_dreamento = 'None'
 
-        if len(self.rem_by_staging_and_eyes) > 0:
-            time, epoch, rem_by_scoring, rem_by_eyes = self.rem_by_staging_and_eyes[-1]
+        # if len(self.rem_by_staging_and_eyes) > 0:
+        #     time, epoch, rem_by_scoring, rem_by_eyes = self.rem_by_staging_and_eyes[-1]
 
         if len(self.dreamento_scoring) > 0:
             stagesList = ['W', 'N1', 'N2', 'N3', 'REM', 'MOVE', 'UNK']
@@ -228,7 +231,7 @@ class HBRecorderInterface:
                 'epoch_dreamento': epoch_dreamento
                 }
         try:
-            requests.post(self.webHookBaseAdress + 'sleepstate', data=data)
+            requests.post(self.build_webhook_address() + 'sleepstate', data=data)
         except Exception as e:
             print(e)
             Logger().log('error when posting request to webhook. webhook is probably not available', 'Warning')
@@ -237,7 +240,7 @@ class HBRecorderInterface:
     def start_webhook(self):
         Logger().log(f'starting webhook', 'info')
         try:
-            requests.post(self.webHookBaseAdress + 'hello', data={'hello': 'hello'})
+            requests.post(self.build_webhook_address() + 'hello', data={'hello': 'hello'})
             self.webhookActive = True
         except Exception as e:
             Logger().log('webhook seems to be offline. not activating', 'warning')
@@ -263,9 +266,11 @@ class HBRecorderInterface:
         delay_in_epochs = max(delay_in_epochs, 10)
         self.scoring_delay_in_epochs = delay_in_epochs
 
-    def set_webhook_ip(self, ip: str):
+    def set_webhook_ip(self, address = ''):
         # ToDo: check for validity of IP address
-        self.webHookBaseAdress = ip
+        if not address.startswith('http://'):
+            address = 'http://' + address
+        self.webHookBaseAdress = address
 
         if self.webhookActive:
             self.stop_webhook()

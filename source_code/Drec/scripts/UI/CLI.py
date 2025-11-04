@@ -1,4 +1,6 @@
 import cmd
+from typing import List
+
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from flask import Flask, request, jsonify
 from werkzeug.serving import make_server
@@ -107,8 +109,8 @@ class SleepRecorderCLI(cmd.Cmd, QObject):
             print(f'please provide a numer. "{line}" was not interpretable as integer.')
 
     def do_set_webhookip(self, line):
-        ip = line
-        self.set_webhookip_signal.emit(ip)
+        """set the webhook ip in form ip:port/endpoint/"""
+        self.set_webhookip_signal.emit(line)
 
 
 
