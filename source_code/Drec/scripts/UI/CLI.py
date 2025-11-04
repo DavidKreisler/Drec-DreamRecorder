@@ -32,6 +32,7 @@ class SleepRecorderCLI(cmd.Cmd, QObject):
     stop_webhook_signal = pyqtSignal(bool)
     set_signaltype_signal = pyqtSignal(list)
     set_scoring_delay_signal = pyqtSignal(int)
+    set_webhookip_signal = pyqtSignal(str)
     quit_signal = pyqtSignal(bool)
 
     def __init__(self):
@@ -105,7 +106,9 @@ class SleepRecorderCLI(cmd.Cmd, QObject):
         except ValueError:
             print(f'please provide a numer. "{line}" was not interpretable as integer.')
 
-
+    def do_set_webhookip(self, line):
+        ip = line
+        self.set_webhookip_signal.emit(ip)
 
 
 

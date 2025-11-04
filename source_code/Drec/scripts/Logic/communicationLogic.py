@@ -16,7 +16,8 @@ class CommunicationLogic:
     def __init__(self):
         self.app = QApplication(sys.argv)
 
-        self.comm = FlaskThread() #CLIThread()
+        self.comm = FlaskThread()
+        # self.comm = CLIThread()
 
         self.hbif = HBRecorderInterface()
 

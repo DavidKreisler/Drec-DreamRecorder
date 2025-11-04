@@ -192,9 +192,9 @@ class HBRecorderInterface:
         sigR = eegr[-30 * 256:]
         sigL = eegl[-30 * 256:]
 
-        if self.scoring_model == 'yasa' or self.scoring_model == 'both':
-            if epoch_counter > self.scoring_delay_in_epochs:
-                self._score_pure_yasa(epoch_counter, eegr, eegl)
+        # if self.scoring_model == 'yasa' or self.scoring_model == 'both':
+        #     if epoch_counter > self.scoring_delay_in_epochs:
+        #         self._score_pure_yasa(epoch_counter, eegr, eegl)
 
         if self.scoring_model == 'dreamento' or self.scoring_model == 'both':
             self._score_with_dreamento(epoch_counter, sigR, sigL)
