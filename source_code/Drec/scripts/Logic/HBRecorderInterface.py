@@ -167,7 +167,7 @@ class HBRecorderInterface:
             args_log_file="info_ch_extract.log", filtering_status=True,
             lowcut=0.3, highcut=30, fs=256, signal_req=sigReq, signal_ref=sigRef, model=self.dreamento_model)
 
-        self.dreamento_scoring.append({'pred': int(modelPrediction[0]), 'epoch': epoch_counter})
+        self.dreamento_scoring.append({'pred': int(modelPrediction[0]), 'epoch': epoch_counter, 'time': datetime.now()})
 
     def _score_pure_yasa(self, epoch_counter, eegr, eegl):
         """
@@ -208,6 +208,7 @@ class HBRecorderInterface:
         epoch = 'None'
         scoring_dreamento = 'None'
         epoch_dreamento = 'None'
+        time_dreamento = 'None'
 
         if len(self.rem_by_staging_and_eyes) > 0:
             time, epoch, rem_by_scoring, rem_by_eyes = self.rem_by_staging_and_eyes[-1]
@@ -217,12 +218,13 @@ class HBRecorderInterface:
             dreamento_data = self.dreamento_scoring[-1]
             epoch_dreamento = dreamento_data['epoch']
             scoring_dreamento = stagesList[dreamento_data['pred']]
+            time_dreamento = dreamento_data['time']
 
-        data = {'rem_by_scoring': rem_by_scoring,
-                'rem_by_eyes': rem_by_eyes,
+        data = {#'rem_by_scoring': rem_by_scoring,
+                #'rem_by_eyes': rem_by_eyes,
                 'scoring_dreamento': scoring_dreamento,
-                'time': time,
-                'epoch': epoch,
+                'time': time_dreamento,
+                #'epoch': epoch,
                 'epoch_dreamento': epoch_dreamento
                 }
         try:
