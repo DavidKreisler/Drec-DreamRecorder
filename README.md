@@ -1,7 +1,9 @@
 # Drec-DreamRecorder
 
 This repository was originally based on dreamento (accessed from https://github.com/dreamento/dreamento, mid 2024). 
-It has developed into a standalone project for **eeg recording** of the signal captured by a ZMax Headband (by Hypnodyne) and **scoring** the eeg signal using the **yasa** library. Additionally the option to send the scoring to a separate **webhook** is implemented, to allow to control external (audio, visual, ...) impulses or applications.
+It has developed into a standalone project for **eeg recording** of the signal captured by a ZMax Headband (by Hypnodyne). We went back to dreamento for **scoring** the eeg signal using their trained model. Additionally the option to send the scoring to a separate **webhook** is implemented, to allow to control external (audio, visual, ...) impulses or applications.
+
+The application can be run as CLI or Flask Server application bu passing the argument "--mode cli" (default) or "--mode server" on startup. 
 
 ## requirements
 - python 3.8
@@ -47,4 +49,10 @@ python mainconsole.py
 
 ## usage
 make sure **HDServer** from hypnodyne is running. 
+
+### CLI
+type 'help' to see the available commands
+
+### Server
+the available endpoints to the server are listed in the file scripts/UI/ServerAPI.py in the class FlaskApp.
 
