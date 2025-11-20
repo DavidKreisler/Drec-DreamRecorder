@@ -23,7 +23,7 @@ def get_arguments():
     )
     parser.add_argument("--mode", "-m",
                         choices=["cli", "server"],
-                        default="cli",
+                        default="server",
                         help="Run mode: 'cli' (default) or 'server'")
 
     args = parser.parse_args()

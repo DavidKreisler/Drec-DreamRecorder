@@ -113,18 +113,24 @@ class HBRecorderInterface:
                 if rem_by_staging == 1 and rem_by_eyes == 1:
                     rem_lines.append((epoch, epoch*30, time.strftime("%Y-%m-%d %H:%M:%S"), 'REM detected'))
 
-            with open(os.path.join(filePath, "rem_markers.txt"), "a") as outfile:
+            with open(os.path.join(filePath, "yasa_rem_markers.txt"), "a") as outfile:
                 outfile.write("\n".join(str(epoch) + ' - ' + str(seconds) + 's' + ' - ' +  time + ' - ' + str(is_rem)
                                         for epoch, seconds, time, is_rem in rem_lines))
 
         if self.dreamento_scoring:
-            outfile_content = []
+            stages_outfile_content = []
+            markers_outfile_content = []
             stagesList = ['W', 'N1', 'N2', 'N3', 'REM', 'MOVE', 'UNK'] # taken from original repository
             for line in self.dreamento_scoring:
-                outfile_content.append((line['epoch'], stagesList[line['pred']]))
+                stages_outfile_content.append((line['epoch'], stagesList[line['pred']], line['time']))
+                if line['pred'] == 'REM':
+                    markers_outfile_content.append((line['epoch'], stagesList[line['pred']], line['time']))
 
-            with open(os.path.join(filePath, 'dreamento_scoring.txt'), 'a') as outfile:
-                outfile.writelines('\n'.join(str(epoch) + ' - ' + str(pred) for epoch, pred in outfile_content))
+            with open(os.path.join(filePath, 'dreamento_stages.txt'), 'a') as outfile:
+                outfile.writelines('\n'.join(str(time) + ' - ' + str(epoch) + ' - ' + str(pred) for epoch, pred, time in stages_outfile_content))
+
+            with open(os.path.join(filePath, 'dreamento_rem_markers.txt'), 'a') as outfile:
+                outfile.writelines('\n'.join(str(time) + ' - ' + str(epoch) + ' - ' + str(int(pred == 'REM')) for epoch, pred, time in markers_outfile_content))
 
         # send signal to webhook if it is running
         if self.webhookActive:
@@ -195,9 +201,9 @@ class HBRecorderInterface:
         sigR = eegr[-30 * 256:]
         sigL = eegl[-30 * 256:]
 
-        # if self.scoring_model == 'yasa' or self.scoring_model == 'both':
-        #     if epoch_counter > self.scoring_delay_in_epochs:
-        #         self._score_pure_yasa(epoch_counter, eegr, eegl)
+        if self.scoring_model == 'yasa' or self.scoring_model == 'both':
+            if epoch_counter > self.scoring_delay_in_epochs:
+                self._score_pure_yasa(epoch_counter, eegr, eegl)
 
         if self.scoring_model == 'dreamento' or self.scoring_model == 'both':
             self._score_with_dreamento(epoch_counter, sigR, sigL)
@@ -205,16 +211,16 @@ class HBRecorderInterface:
     def _send_to_webhook(self):
         if len(self.rem_by_staging_and_eyes) <= 0 and len(self.dreamento_scoring) <= 0:
             return
-        # rem_by_scoring = 'None'
-        # rem_by_eyes = 'None'
-        # time = 'None'
-        # epoch = 'None'
+        rem_by_yasa_scoring = 'None'
+        rem_by_yasa_eyes = 'None'
+        time_yasa = 'None'
+        epoch_yasa = 'None'
         scoring_dreamento = 'None'
         epoch_dreamento = 'None'
         time_dreamento = 'None'
 
-        # if len(self.rem_by_staging_and_eyes) > 0:
-        #     time, epoch, rem_by_scoring, rem_by_eyes = self.rem_by_staging_and_eyes[-1]
+        if len(self.rem_by_staging_and_eyes) > 0:
+            time_yasa, epoch_yasa, rem_by_yasa_scoring, rem_by_yasa_eyes = self.rem_by_staging_and_eyes[-1]
 
         if len(self.dreamento_scoring) > 0:
             stagesList = ['W', 'N1', 'N2', 'N3', 'REM', 'MOVE', 'UNK']
@@ -223,11 +229,12 @@ class HBRecorderInterface:
             scoring_dreamento = stagesList[dreamento_data['pred']]
             time_dreamento = dreamento_data['time']
 
-        data = {#'rem_by_scoring': rem_by_scoring,
-                #'rem_by_eyes': rem_by_eyes,
+        data = {'epoch_yasa': epoch_yasa,
+                'time_yasa': time_yasa,
+                'rem_by_yasa_scoring': rem_by_yasa_scoring,
+                'rem_by_yasa_eyes': rem_by_yasa_eyes,
                 'scoring_dreamento': scoring_dreamento,
-                'time': time_dreamento,
-                #'epoch': epoch,
+                'time_dreamento': time_dreamento,
                 'epoch_dreamento': epoch_dreamento
                 }
         try:

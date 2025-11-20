@@ -1,3 +1,4 @@
+import datetime
 import os
 import socket
 import threading
@@ -17,7 +18,7 @@ class HD_Server_Sim:
 
         # Global variables for EEG data
         self.eeg_data = None
-        self.sampling_rate = 1024 # 256 Hz # CHANGE SF FOR FASTER TRANSMITION
+        self.sampling_rate = 256 # 256 Hz # CHANGE SF FOR FASTER TRANSMITION
         self.current_sample = 0  # Pointer to track the current sample being streamed
         self.streaming = False
 
@@ -44,6 +45,7 @@ class HD_Server_Sim:
         interval = chunk_size / self.sampling_rate  # Send chunks every second
 
         while True:
+            start_time = datetime.datetime.now()
             if len(self.clients) > 0 and self.streaming:
                 # Calculate the range of samples to send
                 start = self.current_sample
@@ -52,11 +54,11 @@ class HD_Server_Sim:
                 if end > n_samples:
                     print(f'[INFO] End of file reached. stopping stream.')
                     self.streaming = False
-                else:
-                    chunk = self.eeg_data[:, start:end]
-                    self.current_sample = end
-                    if self.current_sample % (n_samples / 10) == 0:
-                        print(f'{(self.current_sample / n_samples) * 100}% done')
+                    break
+                chunk = self.eeg_data[:, start:end]
+                self.current_sample = end
+                if self.current_sample % (n_samples / 10) == 0:
+                    print(f'{(self.current_sample / n_samples) * 100}% done')
 
                 # convert the chunks into a message
                 accumulated_message = ''
@@ -66,11 +68,11 @@ class HD_Server_Sim:
                     accumulated_message += signal_to_hex(sigl, sigr) + '/r/n'
 
                 self.broadcast_data(accumulated_message)
-
             else:
                 time.sleep(1)
-
-            time.sleep(interval)  # Wait for 1 second before sending the next chunk
+            now_time = datetime.datetime.now()
+            # print(max(0.0, interval - (now_time - start_time).total_seconds()))
+            time.sleep(max(0.0, interval - (now_time - start_time).total_seconds()))  # Wait for interval before sending the next chunk
 
     def handle_client(self, client_socket, address):
         """Handles communication with a single client."""

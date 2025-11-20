@@ -1,3 +1,4 @@
+import datetime
 import socket
 
 import mne
@@ -118,6 +119,17 @@ def send_to_server():
             client_socket.close()
 
 
+def recv_exact(sock, n):
+    """Receive exactly n bytes (TCP may fragment)."""
+    data = b''
+    while len(data) < n:
+        packet = sock.recv(n - len(data))
+        if not packet:
+            raise ConnectionError("Connection lost")
+        data += packet
+    return data
+
+
 def read_from_server():
     all_data = []
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
@@ -127,13 +139,16 @@ def read_from_server():
         packet_no = 0
         try:
             while True:
-                data = client_socket.recv(65000)  # Buffer size
+                start_time = datetime.datetime.now()
+                # data = recv_exact(client_socket, 125) # 125 is the length of each message
+                data = client_socket.recv(125)  # Buffer size
                 if not data:
                     continue
                 packet_no += 1
                 if packet_no % 10000 == 0:
                     print(f'{packet_no / 10000} * 10k packets received')
-                #print(data.decode('utf-8'))
+                # print(data.decode('utf-8'))
+                print((datetime.datetime.now() - start_time))
         except KeyboardInterrupt:
             print("[DISCONNECTING] Closing connection.")
         finally:
